@@ -564,9 +564,20 @@ npm test             # engine + app unit tests (docs/sheets/slides need no displ
 npm run typecheck    # tsc --noEmit across every workspace
 npm run dev          # all six editors + shell against Vite dev servers
 npm run dev:docs     # a single app (same pattern works per workspace)
-npm run dist:mac     # package macOS dmg (regenerates third-party notices)
-npm run dist:win     # package Windows nsis installer
-npm run dist:linux   # package Linux AppImage + deb + rpm
+npm run dist         # package the host platform (see below)
+```
+
+`npm run dist` is the single packaging entrypoint: it regenerates the
+third-party notices, builds every workspace, builds the macOS universal xlsx
+sidecar when it is packaging mac, then runs electron-builder. Pass a target or
+an electron-builder flag through it:
+
+```bash
+npm run dist -- --target mac     # dmg + zip
+npm run dist -- --target win     # nsis installer
+npm run dist -- --target linux   # AppImage + deb + rpm
+npm run dist -- --dir            # unpacked app only, for a quick smoke test
+npm run dist -- --dry-run        # print the resolved steps, build nothing
 ```
 
 The sheets app additionally needs a Rust toolchain for its xlsx sidecar

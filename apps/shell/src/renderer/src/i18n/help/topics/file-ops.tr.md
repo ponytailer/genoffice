@@ -17,7 +17,7 @@ Kurallar: uzantı otomatik olarak korunur; geçersiz karakterler, sondaki noktal
 
 ## Silme
 
-- Giriş **⋯ ▸ Sil**: hangi dosyaların silineceğini sorar, ardından onları işletim sisteminin geri yükleyebileceği **sistem çöp kutusuna** taşır. GenOffice bunun için kendi geri alma mekanizmasını tutmaz — kurtarma çöp kutusunun işidir, bir bildirimin değil.
+- Giriş **⋯ ▸ Sil**: hangi dosyaların silineceğini sorar, ardından onları işletim sisteminin geri yükleyebileceği **sistem çöp kutusuna** taşır. CMLG Office bunun için kendi geri alma mekanizmasını tutmaz — kurtarma çöp kutusunun işidir, bir bildirimin değil.
 
 ## Çoğaltma
 

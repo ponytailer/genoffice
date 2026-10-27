@@ -5,9 +5,9 @@ import { isGenofficeLauncher, mcpSnippet, readMcpEntry, writeMcpEntry } from '..
 import { mcpLaunch, mcpLaunchFromLauncher, type McpLaunch } from '../src/mcp-launch'
 import { tempDir } from './helpers'
 
-const WIN_DIR = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\GenOffice\\resources\\cli'
+const WIN_DIR = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\CMLG Office\\resources\\cli'
 const WIN_APP: McpLaunch = {
-  command: `${WIN_DIR}\\..\\..\\GenOffice.exe`,
+  command: `${WIN_DIR}\\..\\..\\CMLG Office.exe`,
   args: [`${WIN_DIR}\\genoffice.cjs`, 'mcp'],
   env: { ELECTRON_RUN_AS_NODE: '1' },
 }
@@ -15,15 +15,15 @@ const WIN_APP: McpLaunch = {
 describe('mcp launch entry', () => {
   it('is the absolute launcher on macOS and Linux', () => {
     expect(
-      mcpLaunchFromLauncher('/Applications/GenOffice.app/Contents/Resources/cli/genoffice'),
+      mcpLaunchFromLauncher('/Applications/CMLG Office.app/Contents/Resources/cli/genoffice'),
     ).toEqual({
-      command: '/Applications/GenOffice.app/Contents/Resources/cli/genoffice',
+      command: '/Applications/CMLG Office.app/Contents/Resources/cli/genoffice',
       args: ['mcp'],
     })
   })
 
   it('uses the absolute launcher while the linked dir is still off the PATH (genoffice#1019)', () => {
-    const launcherDir = '/Applications/GenOffice.app/Contents/Resources/cli'
+    const launcherDir = '/Applications/CMLG Office.app/Contents/Resources/cli'
     expect(mcpLaunch({ status: 'present', launcherDir })).toEqual({
       command: 'genoffice',
       args: ['mcp'],
@@ -38,7 +38,7 @@ describe('mcp launch entry', () => {
   })
 
   it('runs the packaged Windows app as Node on the bundle, exactly as the app snippet does', () => {
-    const exists = (p: string) => p === `${WIN_DIR}\\..\\..\\GenOffice.exe`
+    const exists = (p: string) => p === `${WIN_DIR}\\..\\..\\CMLG Office.exe`
     const fromCli = mcpLaunchFromLauncher(`${WIN_DIR}\\genoffice.cmd`, { exists })
     expect(fromCli).toEqual(WIN_APP)
     expect(fromCli).toEqual(mcpLaunch({ status: 'missing', launcherDir: WIN_DIR }))
@@ -60,8 +60,11 @@ describe('mcp launch entry', () => {
   })
 
   it('recognises every launcher shape as ours', () => {
+    expect(isGenofficeLauncher('/opt/CMLG Office/resources/cli/genoffice')).toBe(true)
+    expect(isGenofficeLauncher('C:\\CMLG Office\\resources\\cli\\genoffice.cmd')).toBe(true)
+    expect(isGenofficeLauncher('C:\\Program Files\\CMLG Office\\CMLG Office.exe')).toBe(true)
+    // a pre-rename install is still ours
     expect(isGenofficeLauncher('/opt/GenOffice/resources/cli/genoffice')).toBe(true)
-    expect(isGenofficeLauncher('C:\\GenOffice\\resources\\cli\\genoffice.cmd')).toBe(true)
     expect(isGenofficeLauncher('C:\\Program Files\\GenOffice\\GenOffice.exe')).toBe(true)
     expect(isGenofficeLauncher(WIN_APP.command, WIN_APP.args)).toBe(true)
     expect(
@@ -123,11 +126,11 @@ describe('mcp launch entry', () => {
     expect(mcpSnippet('codex', WIN_APP)).toContain('[mcp_servers.genoffice.env]')
   })
 
-  it('treats the app snippet entry (GenOffice.exe on genoffice.cjs) as ours, not occupied', () => {
+  it('treats the app snippet entry (the app .exe on genoffice.cjs) as ours, not occupied', () => {
     const home = tempDir()
     const file = join(home, 'mcp.json')
     writeFileSync(file, JSON.stringify({ mcpServers: { genoffice: WIN_APP } }))
-    const posix = { command: '/opt/GenOffice/resources/cli/genoffice', args: ['mcp'] }
+    const posix = { command: '/opt/CMLG Office/resources/cli/genoffice', args: ['mcp'] }
     expect(readMcpEntry('cursor', file, posix)).toEqual({
       status: 'stale',
       command: WIN_APP.command,

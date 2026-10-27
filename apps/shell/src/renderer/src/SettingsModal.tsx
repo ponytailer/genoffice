@@ -44,6 +44,7 @@ import type {
   AiCatalogEntry,
   AuthorNameSetting,
   DocTheme,
+  PlatformModelsResult,
   UiTheme,
 } from '../../shared/home-api'
 import { ProviderLogo } from './provider-logos'
@@ -170,14 +171,21 @@ function CustomFontSizeInput({
 }
 
 export type SectionId =
-  'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'skills' | 'about'
+  | 'account'
+  | 'aiModel'
+  | 'aiMedia'
+  | 'general'
+  | 'integrations'
+  | 'skills'
+  | 'about'
 
+// 集成 (integrations) and 生图与媒体 (aiMedia) are hidden from the nav for the
+// CMLG deployment; the panes below stay reachable through a deep link so the
+// settings target API keeps working.
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'account', labelKey: 'setSecAccount' },
   { id: 'aiModel', labelKey: 'setSecAiModel' },
-  { id: 'aiMedia', labelKey: 'setSecAiMedia' },
   { id: 'general', labelKey: 'setSecGeneral' },
-  { id: 'integrations', labelKey: 'setSecIntegrations' },
   { id: 'skills', labelKey: 'setSecSkills' },
   { id: 'about', labelKey: 'setSecAbout' },
 ]
@@ -310,751 +318,154 @@ function Field({
  */
 const CUSTOM_MODELS_DEBOUNCE_MS = 400
 
-/** replace one catalog entry's model list, leaving every other entry untouched */
-function foldModels(providerId: string, models: string[]) {
-  return (current: AiCatalogEntry[]): AiCatalogEntry[] =>
-    current.map((entry) =>
-      entry.id === providerId ? { ...entry, models, defaultModel: '' } : entry,
-    )
-}
+/**
+ * Read-only model pane: the CMLG AI 数字员工平台 owns each employee's model
+ * configuration, so this pane only renders what the platform hands back. No
+ * field is editable — changing a model is a platform-side action.
+ */
+function AiModelPane({
+  t,
+  status,
+  loginWaiting,
+  onLogin,
+}: {
+  t: TFunc
+  status: AccountStatus | null
+  loginWaiting: boolean
+  onLogin: () => void
+}) {
+  const [result, setResult] = useState<PlatformModelsResult | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [nonce, setNonce] = useState(0)
+  const loggedIn = status?.loggedIn ?? false
+  const user = status?.user
 
-/** AI model pane: provider / model / key / base URL, saved to userData/ai-settings.json */
-function AiModelPane({ t }: { t: TFunc }) {
-  const [catalog, setCatalog] = useState<AiCatalogEntry[]>(
-    () => window.aiOffice.getAiProviders?.() ?? [],
-  )
-  const [settings, setSettings] = useState<AiSettings | null>(null)
-  const [dirty, setDirty] = useState(false)
-  const [saved, setSaved] = useState(false)
-  const [testing, setTesting] = useState(false)
-  const [testResult, setTestResult] = useState<{ ok: boolean; error?: string } | null>(null)
-  /** free-typed value of the output-cap field; committed (and clamped) on blur */
-  const [maxTokensDraft, setMaxTokensDraft] = useState<string | null>(null)
-
-  const refreshCodexModels = useCallback(async (cliPath = '', selectedModel = '') => {
-    if (!window.aiOffice.getCodexModels) return
-    const live = await window.aiOffice.getCodexModels(cliPath)
-    setCatalog((current) =>
-      current.map((entry) => {
-        if (entry.id !== 'codex') return entry
-        const models =
-          selectedModel && !live.models.includes(selectedModel)
-            ? [selectedModel, ...live.models]
-            : live.models
-        return { ...entry, models, defaultModel: live.defaultModel }
-      }),
-    )
-  }, [])
-
-  // Re-read on every outside write (composer model chip) while the form has no
-  // unsaved edits; a dirty form keeps the user's draft and saves it as is.
-  const dirtyRef = useRef(dirty)
-  dirtyRef.current = dirty
-  /** bumped on every outside reload so a connection test that was still running reports nothing */
-  const testSeqRef = useRef(0)
   useEffect(() => {
     let alive = true
-    const load = () => {
-      void window.aiOffice.getAiSettings?.().then((s) => {
-        if (!alive || !s) return
-        testSeqRef.current += 1
-        setTesting(false)
-        setTestResult(null)
-        setSaved(false)
-        // The switch is disabled with genspark, so never present it stranded
-        // off. Display-only: s.provider may be the activeProvider fallback for
-        // a half-configured BYOK selection, so writing anything back here would
-        // clobber the stored choice — the main process heals a genuine legacy
-        // genspark+off file itself, judged on the raw stored provider.
-        if (s.provider === 'genspark' && s.gskToolsEnabled === false) {
-          s = { ...s, gskToolsEnabled: true }
-        }
-        setSettings(s)
-        const codex = s.providers.codex
-        if (codex) {
-          void refreshCodexModels(codex.cliPath ?? '', codex.model).catch(() => undefined)
-        }
-      })
+    if (!loggedIn) {
+      setResult({ loggedIn: false, models: [] })
+      setLoading(false)
+      return
     }
-    load()
-    const off = window.aiOffice.onAiSettingsChanged?.(() => {
-      if (!dirtyRef.current) load()
-    })
+    setLoading(true)
+    void (window.aiOffice.platformModels?.() ?? Promise.resolve({ loggedIn: false, models: [] }))
+      .then((r) => {
+        if (!alive) return
+        setResult(r)
+        setLoading(false)
+      })
+      .catch(() => {
+        if (!alive) return
+        setResult({ loggedIn: false, models: [] })
+        setLoading(false)
+      })
     return () => {
       alive = false
-      off?.()
     }
-  }, [refreshCodexModels])
+  }, [loggedIn, nonce])
 
-  // A user-hosted endpoint gets the same live model list as Codex, asked of the
-  // endpoint itself. Keyed on the catalog's `needsBaseUrl` flag rather than on
-  // the literal 'custom' id, so it follows the slot rather than the name, and
-  // stays a no-op while any other provider is selected — a local server saved
-  // months ago is never contacted while Genspark is in use. Aggregators flagged
-  // `liveModels` (OpenRouter) join in at their default address, their shipped
-  // list standing in until the catalog answers.
-  const liveEntry = catalog.find(
-    (entry) => entry.id === settings?.provider && (entry.needsBaseUrl || entry.liveModels),
-  )
-  const endpointProvider = liveEntry?.id
-  const endpointConfig = settings ? settings.providers[settings.provider] : undefined
-  const endpointBaseUrl =
-    (endpointConfig?.baseUrl ?? '').trim() ||
-    (liveEntry?.liveModels ? liveEntry.defaultBaseUrl : '')
-  /** the lists as shipped, restored when a live list is withdrawn */
-  const shippedModelsRef = useRef(new Map(catalog.map((entry) => [entry.id, entry.models])))
-  const endpointApiKey = endpointConfig?.apiKey ?? ''
-  // The probe speaks the endpoint's declared protocol: an Anthropic- or
-  // Gemini-shaped gateway answers a different route, and the list it returns
-  // is the only model source the picker has.
-  const endpointApi = endpointConfig?.profile?.api
-  // The stored model decides where the pin goes below, but changing it must not
-  // send another request, so it is read when the reply lands rather than keyed on.
-  const selectedModelRef = useRef('')
-  useEffect(() => {
-    selectedModelRef.current = endpointConfig?.model ?? ''
-  })
-  /** the address that produced the list currently folded in; '' when none is */
-  const listedForRef = useRef('')
-  /** the capability declarations that probe answered with, for the save merge */
-  const probedProfilesRef = useRef<AiCustomModelProfile[] | undefined>(undefined)
-
-  useEffect(() => {
-    if (!endpointProvider) return
-    // A list belonging to a different server — or to no server, once the address
-    // is cleared — is misinformation, so it goes the moment the address changes:
-    // the free-text box is the honest thing to show while the answer is unknown.
-    if (listedForRef.current && listedForRef.current !== endpointBaseUrl) {
-      listedForRef.current = ''
-      probedProfilesRef.current = undefined
-      setCatalog(foldModels(endpointProvider, shippedModelsRef.current.get(endpointProvider) ?? []))
-    }
-    if (!endpointBaseUrl || !window.aiOffice.getCustomModels) return
-    let cancelled = false
-    const timer = setTimeout(() => {
-      void window.aiOffice
-        .getCustomModels(endpointBaseUrl, endpointApiKey, endpointApi)
-        .then((live) => {
-          // A server that will not answer leaves the current list alone: a blip
-          // must not wipe a picker mid-use.
-          if (cancelled || !live || live.models.length === 0) return
-          // A hand-typed id is pinned to the top so it never vanishes from the
-          // picker. The catalog is the only thing written — writing settings
-          // here would revert whatever the user typed while the probe was in
-          // flight, since `updateConfig` rebuilds them from its own render.
-          const selected = selectedModelRef.current.trim()
-          const models =
-            selected && !live.models.includes(selected) ? [selected, ...live.models] : live.models
-          listedForRef.current = endpointBaseUrl
-          probedProfilesRef.current = live.profiles
-          setCatalog(foldModels(endpointProvider, models))
-        })
-        .catch(() => undefined)
-    }, CUSTOM_MODELS_DEBOUNCE_MS)
-    // React's own cleanup drops a superseded reply, so a slow answer from the
-    // previous address can never overwrite a fast one from the current address.
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-    }
-  }, [endpointProvider, endpointBaseUrl, endpointApiKey, endpointApi])
-
-  if (!settings) return null
-  const provider = settings.provider
-  const meta = catalog.find((c) => c.id === provider)
-  const config = settings.providers[provider] ?? {
-    apiKey: '',
-    model: meta?.defaultModel ?? '',
-    baseUrl: undefined,
-    cliPath: undefined,
-  }
-  const isGenspark = provider === 'genspark'
-  const isCodex = provider === 'codex'
-
-  const touch = () => {
-    setDirty(true)
-    setSaved(false)
-    setTestResult(null)
-  }
-  const endpoint = meta?.needsBaseUrl ? activeCustomEndpoint(settings) : undefined
-  /** Patch the active endpoint's declarative profile (protocol, headers, timeouts, switches). */
-  const updateEndpointProfile = (patch: Partial<AiCustomEndpoint>) => {
-    if (!endpoint) return
-    setSettings(upsertCustomEndpoint(settings, { ...endpoint, ...patch }))
-    touch()
-  }
-  /** Remove a key from the endpoint entirely, so the shipped heuristic answers again. */
-  const clearEndpointProfileKey = (
-    key: 'compat' | 'modelProfiles' | 'apiKeyEnv' | 'idleTimeoutMs',
-  ) => {
-    if (!endpoint) return
-    const next = { ...endpoint }
-    delete next[key]
-    setSettings(upsertCustomEndpoint(settings, next))
-    touch()
-  }
-  const endpointCompat = endpoint?.compat ?? {}
-  /** The tri-state image-input control: undefined keeps the shipped heuristic. */
-  const endpointVision = endpointCompat.vision
-  const headersText = Object.entries(endpoint?.headers ?? {})
-    .map(([k, v]) => `${k}: ${v}`)
-    .join('\n')
-  const modelsText = JSON.stringify(endpoint?.modelProfiles ?? [], null, 2)
-  const updateConfig = (patch: Partial<typeof config>) => {
-    if (meta?.needsBaseUrl) {
-      // the slot mirrors the active endpoint, so the edit lands on the endpoint
-      const base = endpoint ?? {
-        id: newCustomEndpointId(),
-        name: '',
-        baseUrl: config.baseUrl ?? '',
-        apiKey: config.apiKey,
-        model: config.model,
-      }
-      const { cliPath: _cli, ...fields } = patch
-      setSettings(upsertCustomEndpoint(settings, { ...base, ...fields }, true))
-    } else {
-      setSettings({
-        ...settings,
-        providers: { ...settings.providers, [provider]: { ...config, ...patch } },
-      })
-    }
-    touch()
-  }
-  const addEndpoint = () => {
-    setSettings(
-      upsertCustomEndpoint(
-        settings,
-        { id: newCustomEndpointId(), name: '', baseUrl: '', apiKey: '', model: '' },
-        true,
-      ),
-    )
-    touch()
-  }
-  const renameEndpoint = (name: string) => {
-    if (!endpoint) return
-    setSettings(upsertCustomEndpoint(settings, { ...endpoint, name }))
-    touch()
-  }
-  const pickEndpoint = (id: string) => {
-    setSettings(selectCustomEndpoint(settings, id))
-    touch()
-  }
-  const deleteEndpoint = () => {
-    if (!endpoint) return
-    setSettings(removeCustomEndpoint(settings, endpoint.id))
-    touch()
-  }
-  /** Commit the output-cap input: clamp what was typed and drop a no-op edit */
-  const commitMaxTokens = () => {
-    if (maxTokensDraft === null) return
-    setMaxTokensDraft(null)
-    const next = clampMaxOutputTokens(Number.parseInt(maxTokensDraft, 10))
-    if (next === (settings.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS)) return
-    setSettings({ ...settings, maxOutputTokens: next })
-    touch()
-  }
-  const selectProvider = (id: AiSettings['provider']) => {
-    // cloud tools cannot be off with genspark (chat runs through gsk anyway)
-    setSettings({
-      ...settings,
-      provider: id,
-      ...(id === 'genspark' ? { gskToolsEnabled: true } : {}),
-    })
-    touch()
-  }
-  const save = () => {
-    let toSave = settings
-    if (endpoint && listedForRef.current && listedForRef.current === endpoint.baseUrl) {
-      const live = (meta?.models ?? []).filter((m) => m !== endpoint.model)
-      // The probe's capability facts refresh the cache beside the id list —
-      // never the user's declarations, which stay exactly as typed. A model
-      // the server stops serving stops being described on the next probe.
-      const probed = probedProfilesRef.current
-      const { models: _models, probedProfiles: _probedProfiles, ...declarations } = endpoint
-      toSave = upsertCustomEndpoint(settings, {
-        ...declarations,
-        ...(live.length > 0 ? { models: live } : {}),
-        ...(probed && probed.length > 0 ? { probedProfiles: probed } : {}),
-      })
-    }
-    window.aiOffice
-      .setAiSettings?.(toSave)
-      .then(() => {
-        setSettings(toSave)
-        setDirty(false)
-        setSaved(true)
-      })
-      .catch((error) => {
-        window.alert(error instanceof Error ? error.message : String(error))
-      })
-  }
-  const test = () => {
-    const seq = ++testSeqRef.current
-    setTesting(true)
-    setTestResult(null)
-    window.aiOffice
-      .testAiSettings?.(settings)
-      .then((r) => {
-        if (seq !== testSeqRef.current) return
-        setTestResult(r ?? { ok: false })
-        if (r?.ok && isCodex) {
-          void refreshCodexModels(config.cliPath ?? '', config.model).catch(() => undefined)
-        }
-      })
-      .catch((error) => {
-        if (seq !== testSeqRef.current) return
-        setTestResult({ ok: false, error: error instanceof Error ? error.message : String(error) })
-      })
-      .finally(() => {
-        if (seq === testSeqRef.current) setTesting(false)
-      })
-  }
+  const models = result?.models ?? []
+  const displayName = user?.displayName ?? user?.username ?? ''
+  const initials = displayName.slice(0, 1).toUpperCase() || '员'
+  const roleLabel =
+    user?.role === 'admin' ? t('setRoleAdmin') : user?.role ? t('setRoleMember') : ''
 
   return (
     <>
-      <div className="set-pane-head">
-        <h3 className="set-pane-title">{t('setSecAiModel')}</h3>
-        <div className="set-pane-actions">
-          <AiStatusPill
-            status={
-              testing
-                ? { kind: 'testing', text: t('setAiTesting') }
-                : testResult
-                  ? testResult.ok
-                    ? { kind: 'ok', text: t('setAiTestOk') }
-                    : { kind: 'err', text: testResult.error || t('setAiTestFail') }
-                  : saved
-                    ? { kind: 'ok', text: t('setAiSaved') }
-                    : null
-            }
-          />
-          <button className="set-btn" disabled={testing} onClick={test}>
-            {t('setAiTest')}
-          </button>
-          <button className="set-btn primary" disabled={!dirty} onClick={save}>
-            {t('setAiSave')}
+      <div className="model-pane-head">
+        <div className="model-pane-head-text">
+          <h3 className="set-pane-title">{t('setSecAiModel')}</h3>
+          <p className="set-pane-desc">{t('setModelsSource')}</p>
+        </div>
+        <button
+          className="set-btn"
+          disabled={loading || !loggedIn}
+          onClick={() => setNonce((n) => n + 1)}
+        >
+          {t('setModelsRefresh')}
+        </button>
+      </div>
+
+      {!loggedIn ? (
+        <div className="model-empty">
+          <p className="set-pane-desc">{t('setModelsNeedLogin')}</p>
+          <button className="set-btn primary" disabled={loginWaiting} onClick={onLogin}>
+            {loginWaiting ? t('waitingShort') : t('loginGenspark')}
           </button>
         </div>
-      </div>
-      <div className="set-field">
-        <div className="set-field-text">
-          <label className="set-field-label">{t('setAiProvider')}</label>
-        </div>
-        <Dropdown
-          className="set-dd"
-          value={provider}
-          ariaLabel={t('setAiProvider')}
-          options={catalog.map((c) => ({
-            value: c.id,
-            label: c.label,
-            render: (
-              <>
-                <ProviderLogo id={c.id} />
-                {c.label}
-              </>
-            ),
-          }))}
-          onPick={(v) => selectProvider(v as AiSettings['provider'])}
-        />
-      </div>
-      <div className="set-field-desc set-ai-note">
-        {isGenspark ? t('setAiGensparkHint') : isCodex ? t('setAiCodexHint') : t('setAiByokNote')}
-      </div>
-      {meta?.needsBaseUrl && (
+      ) : (
         <>
-          <div className="set-field">
-            <div className="set-field-text">
-              <div className="set-field-stack">
-                <label className="set-field-label">{t('setAiEndpoint')}</label>
-                <div className="set-field-desc">{t('setAiEndpointHint')}</div>
-              </div>
-            </div>
-            <div className="set-ai-endpoint-row">
-              {endpoint && (
-                <Dropdown
-                  className="set-dd"
-                  value={endpoint.id}
-                  ariaLabel={t('setAiEndpoint')}
-                  options={(settings.customEndpoints ?? []).map((e) => ({
-                    value: e.id,
-                    label: customEndpointLabel(e, meta.label),
-                  }))}
-                  onPick={pickEndpoint}
-                />
-              )}
-              <button className="set-btn" type="button" onClick={addEndpoint}>
-                {t('setAiEndpointAdd')}
-              </button>
-              {endpoint && (
-                <button className="set-btn" type="button" onClick={deleteEndpoint}>
-                  {t('setAiEndpointRemove')}
-                </button>
-              )}
-            </div>
-          </div>
-          {endpoint && (
-            <div className="set-field">
-              <div className="set-field-text">
-                <label className="set-field-label" htmlFor="set-ai-endpoint-name">
-                  {t('setAiEndpointName')}
-                </label>
-              </div>
-              <input
-                id="set-ai-endpoint-name"
-                className="set-input"
-                type="text"
-                value={endpoint.name}
-                placeholder={customEndpointLabel(endpoint, meta.label)}
-                spellCheck={false}
-                onChange={(e) => renameEndpoint(e.target.value)}
-              />
+          {user && (
+            <div className="model-owner">
+              <span className="model-owner-avatar" aria-hidden="true">
+                {initials}
+              </span>
+              <span className="model-owner-text">
+                <span className="model-owner-name">{displayName}</span>
+                <span className="model-owner-sub">
+                  {[user.department, user.username ? `@${user.username}` : '', roleLabel]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </span>
+              </span>
             </div>
           )}
+
+          {result?.error && (
+            <p className="model-note error">{t('setModelsError', { reason: result.error })}</p>
+          )}
+          {!result?.error && !loading && models.length === 0 && (
+            <p className="model-note">{t('setModelsEmpty')}</p>
+          )}
+
+          <ul className="model-list" aria-busy={loading}>
+            {models.map((m) => (
+              <li key={m.id} className={'model-card' + (m.enabled ? '' : ' off')}>
+                <div className="model-card-head">
+                  <span className="model-card-name">{m.name}</span>
+                  <span className="model-badges">
+                    {m.isDefault && (
+                      <span className="model-badge primary">{t('setModelDefault')}</span>
+                    )}
+                    {m.isIntentRecognition && (
+                      <span className="model-badge">{t('setModelIntent')}</span>
+                    )}
+                    {m.isGlobalFree && <span className="model-badge">{t('setModelFree')}</span>}
+                    {!m.enabled && (
+                      <span className="model-badge muted">{t('setModelDisabled')}</span>
+                    )}
+                  </span>
+                </div>
+                <div className="model-card-id">{m.model}</div>
+                <div className="model-card-meta">
+                  <span className="model-meta-item">
+                    <span className="model-meta-key">{t('setModelProtocol')}</span>
+                    <span className="model-meta-value">{m.apiProtocol || m.provider || '—'}</span>
+                  </span>
+                  <span className="model-meta-item">
+                    <span className="model-meta-key">{t('setModelBaseUrl')}</span>
+                    <span className="model-meta-value" title={m.baseUrl || ''}>
+                      {m.baseUrl || '—'}
+                    </span>
+                  </span>
+                  <span className="model-meta-item">
+                    <span className="model-meta-key">{t('setModelMaxTokens')}</span>
+                    <span className="model-meta-value">
+                      {m.maxOutputTokens ? m.maxOutputTokens.toLocaleString('en-US') : '—'}
+                    </span>
+                  </span>
+                  <span className="model-meta-item">
+                    <span className="model-meta-key">{t('setModelTemperature')}</span>
+                    <span className="model-meta-value">
+                      {m.temperature === undefined ? '—' : String(m.temperature)}
+                    </span>
+                  </span>
+                </div>
+              </li>
+            ))}
+          </ul>
         </>
       )}
-      <div className="set-field">
-        <div className="set-field-text">
-          <label className="set-field-label">{t('setAiModelId')}</label>
-        </div>
-        {meta && meta.models.length > 0 ? (
-          <Dropdown
-            className="set-dd"
-            value={config.model || meta.defaultModel}
-            ariaLabel={t('setAiModelId')}
-            options={meta.models.map((m) => ({
-              value: m,
-              label: m,
-            }))}
-            onPick={(m) => updateConfig({ model: m })}
-            searchPlaceholder={meta.models.length > 12 ? t('setAiModelSearch') : undefined}
-          />
-        ) : (
-          <input
-            id="set-ai-model"
-            className="set-input"
-            type="text"
-            value={config.model}
-            placeholder="model-id"
-            spellCheck={false}
-            onChange={(e) => updateConfig({ model: e.target.value })}
-          />
-        )}
-      </div>
-      {isCodex ? (
-        <div className="set-field">
-          <div className="set-field-text">
-            <div className="set-field-stack">
-              <label className="set-field-label" htmlFor="set-ai-cli-path">
-                {t('setAiCodexPath')}
-              </label>
-              <div className="set-field-desc">{t('setAiCodexPathHint')}</div>
-            </div>
-          </div>
-          <input
-            id="set-ai-cli-path"
-            className="set-input"
-            type="text"
-            value={config.cliPath ?? ''}
-            placeholder={t('setAiCodexAutoPlaceholder')}
-            spellCheck={false}
-            autoComplete="off"
-            onChange={(e) => updateConfig({ cliPath: e.target.value.trim() })}
-            onBlur={(e) => {
-              const cliPath = e.target.value.trim()
-              void refreshCodexModels(cliPath, config.model).catch(() => undefined)
-            }}
-          />
-        </div>
-      ) : !isGenspark ? (
-        <>
-          <div className="set-field">
-            <div className="set-field-text">
-              <div className="set-field-stack">
-                <label className="set-field-label" htmlFor="set-ai-key">
-                  {t('setAiApiKey')}
-                </label>
-                <div className="set-field-desc">{t('setAiKeyHint')}</div>
-              </div>
-            </div>
-            <input
-              id="set-ai-key"
-              className="set-input"
-              type="password"
-              value={config.apiKey}
-              placeholder={meta?.keyPlaceholder ?? 'API Key'}
-              spellCheck={false}
-              autoComplete="off"
-              onChange={(e) => updateConfig({ apiKey: e.target.value.trim() })}
-            />
-          </div>
-          <div className="set-field">
-            <div className="set-field-text">
-              <div className="set-field-stack">
-                <label className="set-field-label" htmlFor="set-ai-base-url">
-                  {t('setAiBaseUrl')}
-                </label>
-                {!meta?.needsBaseUrl && (
-                  <div className="set-field-desc">{t('setAiBaseUrlHint')}</div>
-                )}
-              </div>
-            </div>
-            <input
-              id="set-ai-base-url"
-              className="set-input"
-              type="text"
-              value={config.baseUrl ?? ''}
-              placeholder={meta?.needsBaseUrl ? 'https://…/v1' : meta?.defaultBaseUrl}
-              spellCheck={false}
-              onChange={(e) => updateConfig({ baseUrl: e.target.value.trim() })}
-            />
-          </div>
-
-          {endpoint && (
-            <>
-              <div className="set-field">
-                <div className="set-field-text">
-                  <div className="set-field-stack">
-                    <label className="set-field-label">{t('setAiApiProtocol')}</label>
-                    <div className="set-field-desc">{t('setAiApiProtocolHint')}</div>
-                  </div>
-                </div>
-                <Dropdown
-                  className="set-dd"
-                  value={endpoint.api ?? 'openai-compatible'}
-                  ariaLabel={t('setAiApiProtocol')}
-                  options={AI_CUSTOM_PROTOCOLS.map((api) => ({
-                    value: api,
-                    label: t(PROTOCOL_LABEL_KEYS[api]),
-                  }))}
-                  onPick={(api) => updateEndpointProfile({ api: api as AiCustomProtocol })}
-                />
-              </div>
-              <div className="set-field set-ai-profile-field">
-                <div className="set-field-text">
-                  <div className="set-field-stack">
-                    <label className="set-field-label">{t('setAiCompatTitle')}</label>
-                    <div className="set-field-desc">{t('setAiCompatEchoHint')}</div>
-                  </div>
-                </div>
-                <div className="set-ai-profile-switches">
-                  <ProfileSwitch
-                    label={t('setAiCompatOmitTemp')}
-                    value={endpointCompat.omitTemperature}
-                    onChange={(on) =>
-                      updateEndpointProfile({
-                        compat: applySwitch(endpointCompat, 'omitTemperature', on),
-                      })
-                    }
-                    texts={{
-                      on: t('setAiSwitchOn'),
-                      off: t('setAiSwitchOff'),
-                      auto: t('setAiSwitchAuto'),
-                    }}
-                  />
-                  <ProfileSwitch
-                    label={t('setAiCompatEchoReasoning')}
-                    value={endpointCompat.echoReasoning}
-                    onChange={(on) =>
-                      updateEndpointProfile({
-                        compat: applySwitch(endpointCompat, 'echoReasoning', on),
-                      })
-                    }
-                    texts={{
-                      on: t('setAiSwitchOn'),
-                      off: t('setAiSwitchOff'),
-                      auto: t('setAiSwitchAuto'),
-                    }}
-                  />
-                  <ProfileSwitch
-                    label={t('setAiCompatMaxCompletion')}
-                    value={endpointCompat.useMaxCompletionTokens}
-                    onChange={(on) =>
-                      updateEndpointProfile({
-                        compat: applySwitch(endpointCompat, 'useMaxCompletionTokens', on),
-                      })
-                    }
-                    texts={{
-                      on: t('setAiSwitchOn'),
-                      off: t('setAiSwitchOff'),
-                      auto: t('setAiSwitchAuto'),
-                    }}
-                  />
-                  <div className="set-ai-profile-row">
-                    <span className="set-ai-profile-label">{t('setAiCompatVision')}</span>
-                    <Dropdown
-                      className="set-dd"
-                      value={endpointVision === undefined ? 'auto' : endpointVision ? 'yes' : 'no'}
-                      ariaLabel={t('setAiCompatVision')}
-                      options={[
-                        { value: 'auto', label: t('setAiCompatVisionAuto') },
-                        { value: 'yes', label: t('setAiCompatVisionYes') },
-                        { value: 'no', label: t('setAiCompatVisionNo') },
-                      ]}
-                      onPick={(v) =>
-                        updateEndpointProfile({
-                          compat: applySwitch(
-                            endpointCompat,
-                            'vision',
-                            v === 'auto' ? undefined : v === 'yes',
-                          ),
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-              </div>
-              <ProfileBlobField
-                fieldId="set-ai-endpoint-headers"
-                label={t('setAiEndpointHeaders')}
-                hint={t('setAiEndpointHeadersHint')}
-                bad={t('setAiEndpointHeadersBad')}
-                text={headersText}
-                placeholder={'X-Tenant: office'}
-                multiline
-                onCommit={(text) => {
-                  const headers = parseHeaderLines(text)
-                  if (!headers) return false
-                  updateEndpointProfile({ headers })
-                  return true
-                }}
-              />
-              <div className="set-field">
-                <div className="set-field-text">
-                  <div className="set-field-stack">
-                    <label className="set-field-label" htmlFor="set-ai-endpoint-idle">
-                      {t('setAiEndpointIdleTimeout')}
-                    </label>
-                    <div className="set-field-desc">{t('setAiEndpointIdleTimeoutHint')}</div>
-                  </div>
-                </div>
-                <input
-                  id="set-ai-endpoint-idle"
-                  className="set-input set-num-input"
-                  type="number"
-                  min={1}
-                  max={600}
-                  step={10}
-                  value={
-                    endpoint.idleTimeoutMs === undefined
-                      ? ''
-                      : Math.round(endpoint.idleTimeoutMs / 1000)
-                  }
-                  placeholder="180"
-                  onChange={(e) => {
-                    const raw = e.target.value.trim()
-                    if (!raw) {
-                      clearEndpointProfileKey('idleTimeoutMs')
-                      return
-                    }
-                    const seconds = Number.parseInt(raw, 10)
-                    if (!Number.isFinite(seconds)) return
-                    updateEndpointProfile({
-                      idleTimeoutMs: Math.max(1, Math.min(600, seconds)) * 1000,
-                    })
-                  }}
-                />
-              </div>
-              <div className="set-field">
-                <div className="set-field-text">
-                  <div className="set-field-stack">
-                    <label className="set-field-label" htmlFor="set-ai-endpoint-key-env">
-                      {t('setAiEndpointKeyEnv')}
-                    </label>
-                    <div className="set-field-desc">{t('setAiEndpointKeyEnvHint')}</div>
-                  </div>
-                </div>
-                <input
-                  id="set-ai-endpoint-key-env"
-                  className="set-input"
-                  type="text"
-                  value={endpoint.apiKeyEnv ?? ''}
-                  placeholder="GW_API_KEY"
-                  spellCheck={false}
-                  autoComplete="off"
-                  onChange={(e) => {
-                    const name = e.target.value.trim()
-                    if (!name) {
-                      clearEndpointProfileKey('apiKeyEnv')
-                      return
-                    }
-                    updateEndpointProfile({ apiKeyEnv: name })
-                  }}
-                />
-              </div>
-              <ProfileBlobField
-                fieldId="set-ai-endpoint-models"
-                label={t('setAiEndpointModels')}
-                hint={
-                  probedProfilesRef.current?.length
-                    ? t('setAiEndpointModelsProbed')
-                    : t('setAiEndpointModelsHint')
-                }
-                bad={t('setAiEndpointModelsBad')}
-                text={modelsText}
-                placeholder={MODEL_DECLARATION_PLACEHOLDER}
-                multiline
-                onCommit={(text) => {
-                  if (!text.trim()) {
-                    clearEndpointProfileKey('modelProfiles')
-                    return true
-                  }
-                  try {
-                    const parsed = JSON.parse(text)
-                    if (!Array.isArray(parsed)) return false
-                    updateEndpointProfile({
-                      modelProfiles: parsed as AiCustomEndpoint['modelProfiles'],
-                    })
-                    return true
-                  } catch {
-                    return false
-                  }
-                }}
-              />
-            </>
-          )}
-        </>
-      ) : null}
-      <div className="set-field">
-        <div className="set-field-text">
-          <div className="set-field-stack">
-            <label className="set-field-label" htmlFor="set-ai-max-tokens">
-              {t('setAiMaxTokens')}
-            </label>
-            <div className="set-field-desc">{t('setAiMaxTokensDesc')}</div>
-          </div>
-        </div>
-        <input
-          id="set-ai-max-tokens"
-          className="set-input"
-          type="number"
-          min={MIN_MAX_OUTPUT_TOKENS}
-          max={MAX_MAX_OUTPUT_TOKENS}
-          step={1024}
-          value={maxTokensDraft ?? String(settings.maxOutputTokens ?? DEFAULT_MAX_OUTPUT_TOKENS)}
-          onChange={(e) => setMaxTokensDraft(e.target.value)}
-          onBlur={commitMaxTokens}
-        />
-      </div>
-      <div className="set-field">
-        <div className="set-field-text">
-          <div className="set-field-stack">
-            <div className="set-field-label">{t('setAiGskTools')}</div>
-            <div className="set-field-desc">{t('setAiGskToolsDesc')}</div>
-          </div>
-        </div>
-        {/* locked on with the genspark provider — chat runs through gsk anyway */}
-        <button
-          className="set-switch"
-          role="switch"
-          aria-checked={settings.gskToolsEnabled !== false}
-          aria-label={t('setAiGskTools')}
-          disabled={isGenspark}
-          onClick={() => {
-            setSettings({ ...settings, gskToolsEnabled: settings.gskToolsEnabled === false })
-            touch()
-          }}
-        />
-      </div>
     </>
   )
 }
@@ -1910,7 +1321,6 @@ export function SettingsModal({
   })()
 
   const loggedIn = status?.loggedIn ?? false
-  const email = status?.email ?? ''
 
   return (
     <div
@@ -1944,7 +1354,7 @@ export function SettingsModal({
               >
                 <SectionIcon id={s.id} />
                 {t(s.labelKey)}
-                {s.id === 'integrations' && updateDue && (
+                {s.id === 'skills' && updateDue && (
                   <span className="set-nav-dot" role="img" aria-label={t('intgUpdateDue')} />
                 )}
               </button>
@@ -1954,25 +1364,39 @@ export function SettingsModal({
             {section === 'account' && (
               <>
                 <h3 className="set-pane-title">{t('setSecAccount')}</h3>
-                <Field label={t('setEmail')} value={loggedIn ? email : t('setNotLoggedIn')} />
-                {loggedIn && (
-                  <Field
-                    label={t('credits')}
-                    value={
-                      status?.creditBalance === undefined
-                        ? '—'
-                        : Math.floor(status.creditBalance).toLocaleString('en-US')
-                    }
-                    action={
-                      <button
-                        className="set-btn"
-                        data-tip={t('creditsTip')}
-                        onClick={() => void window.aiOffice.openCreditUsage?.()}
-                      >
-                        {t('setViewUsage')}
-                      </button>
-                    }
-                  />
+                {loggedIn && status?.user ? (
+                  <>
+                    <div className="acct-card">
+                      <span className="acct-avatar" aria-hidden="true">
+                        {(status.user.displayName ?? status.user.username)
+                          .slice(0, 1)
+                          .toUpperCase()}
+                      </span>
+                      <span className="acct-identity">
+                        <span className="acct-name">
+                          {status.user.displayName ?? status.user.username}
+                        </span>
+                        {status.user.role && (
+                          <span className="acct-role">
+                            {status.user.role === 'admin' ? t('setRoleAdmin') : t('setRoleMember')}
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <Field label={t('setAccountId')} value={status.user.username} />
+                    {status.user.department && (
+                      <Field label={t('setDepartment')} value={status.user.department} />
+                    )}
+                    {status.user.email && <Field label={t('setEmail')} value={status.user.email} />}
+                    {status.user.tenantId && (
+                      <Field label={t('setTenant')} value={status.user.tenantId} />
+                    )}
+                  </>
+                ) : (
+                  <>
+                    <Field label={t('setEmail')} value={t('setNotLoggedIn')} />
+                    <p className="set-pane-desc">{t('setSignInHint')}</p>
+                  </>
                 )}
                 <div className="set-pane-footer">
                   {loggedIn ? (
@@ -1999,7 +1423,9 @@ export function SettingsModal({
                 </div>
               </>
             )}
-            {section === 'aiModel' && <AiModelPane t={t} />}
+            {section === 'aiModel' && (
+              <AiModelPane t={t} status={status} loginWaiting={loginWaiting} onLogin={onLogin} />
+            )}
             {section === 'aiMedia' && (
               <AiMediaPane
                 t={t}

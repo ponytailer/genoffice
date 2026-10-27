@@ -466,9 +466,22 @@ const FILE_ASSOCIATIONS = [
   },
 ]
 
+/**
+ * CMLG Office naming. `productName` drives the bundle/app name, the executable
+ * name (CMLG Office.app / CMLG Office.exe), the Linux install dir
+ * (/opt/CMLG Office) and therefore the userData directory
+ * (…/Application Support/CMLG Office) — apps/shell/src/main/index.ts migrates
+ * the previous GenOffice profile into it once.
+ *
+ * Artifact names are spelled out without the space so download URLs, the
+ * update feed and CI upload globs stay shell-safe.
+ */
+const PRODUCT_NAME = 'CMLG Office'
+const ARTIFACT_BASE = 'CMLG-Office'
+
 const config = {
-  appId: 'com.genoffice.app',
-  productName: 'GenOffice',
+  appId: 'com.cmlg.office',
+  productName: PRODUCT_NAME,
   // Resolved from the installed electron package so dependency bumps can
   // never leave a stale hard-coded pin behind (packaging would silently ship
   // the old runtime).
@@ -594,13 +607,12 @@ const config = {
   fileAssociations: FILE_ASSOCIATIONS,
   npmRebuild: false,
   mac: {
-    // Two separate arch packages (NOT universal): arm64 keeps the exact
-    // artifact names and update-feed entries it always had, x64 (opt-in via
-    // GENOFFICE_MAC_X64=1, see includeMacX64 above) adds Intel support with
-    // electron-builder's default arch-less names (GenOffice-<v>.dmg /
-    // GenOffice-<v>-mac.zip). Both zips land in one latest-mac.yml and
-    // electron-updater picks by process.arch. Dual-arch packs ship the same
-    // lipo fat xlsx-sidecar (see assertUniversalSidecar above).
+    // Two separate arch packages (NOT universal): both spell the arch into the
+    // artifact name so the two dmgs/zips never collide in one output dir
+    // (CMLG-Office-<v>-arm64.dmg / -x64.dmg). Both zips land in one
+    // latest-mac.yml and electron-updater picks by process.arch. Dual-arch
+    // packs ship the same lipo fat xlsx-sidecar (see assertUniversalSidecar).
+    artifactName: `${ARTIFACT_BASE}-\${version}-\${arch}.\${ext}`,
     target: [
       { target: 'dmg', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
       { target: 'zip', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
@@ -614,7 +626,7 @@ const config = {
     // audio-input entitlement, and macOS asks for it with this text
     extendInfo: {
       NSMicrophoneUsageDescription:
-        'GenOffice records your narration when you record a slide show.',
+        'CMLG Office records your narration when you record a slide show.',
     },
     notarize: true,
     extraResources: [
@@ -653,40 +665,42 @@ const config = {
   linux: {
     // AppImage (self-contained, any distro) + deb (apt install, pulls in the
     // GTK/NSS runtime deps) + rpm (dnf/zypper install on Fedora / RHEL /
-    // openSUSE). Default artifact names are kept on purpose —
-    // GenOffice-<v>.AppImage / genoffice_<v>_amd64.deb — because the public
-    // README download links and the already-published linux-v0.5.149 release
-    // use them.
+    // openSUSE). The AppImage name is spelled out without the space
+    // (CMLG-Office-<v>.AppImage); deb/rpm pin theirs in the blocks below.
+    artifactName: `${ARTIFACT_BASE}-\${version}.\${ext}`,
     target: [
       { target: 'AppImage', arch: ['x64'] },
       { target: 'deb', arch: ['x64'] },
       { target: 'rpm', arch: ['x64'] },
     ],
-    // deb control metadata; values match the manually published 0.5.149 deb
-    // so apt sees the new packages as the same lineage. Homepage comes from
-    // package.json "homepage"; the Package field is pinned in the deb block
-    // below (packageName is a per-target option, rejected here by the schema).
-    maintainer: 'Mainfunc, Inc. <team@genspark.ai>',
-    vendor: 'Mainfunc, Inc. <team@genspark.ai>',
+    // deb control metadata. Homepage comes from package.json "homepage"; the
+    // Package field is pinned in the deb block below (packageName is a
+    // per-target option, rejected here by the schema).
+    maintainer: 'CMLG <noreply@folidaymall.com>',
+    vendor: 'CMLG <noreply@folidaymall.com>',
     category: 'Office',
     // Icon SET directory, not the single 1024px png: electron-builder does
     // not resize a lone png, so deb/rpm would install only
-    // hicolor/1024x1024/apps/genoffice.png — a size absent from the hicolor
+    // hicolor/1024x1024/apps/cmlg-office.png — a size absent from the hicolor
     // theme index, leaving GNOME/KDE launchers on the generic fallback icon
     // (genspark-ai/genoffice#90). The set ships every standard raster size.
     icon: 'build/icons',
-    // mac and win name the binary from productName; linux instead derives it
-    // from package.json "name", and "@genoffice/shell" sanitizes to the
-    // invalid "@genofficeshell". Setting it explicitly also makes the
-    // generated genoffice.desktop match the WM_CLASS Electron reports (it
-    // takes that from the executable basename), so the running window links
-    // back to its launcher entry.
-    executableName: 'genoffice',
+    // mac and win name the binary from productName (which would be
+    // "CMLG Office" — a space in an executable path breaks unquoted Exec=
+    // lines); linux instead derives it from package.json "name", and
+    // "@genoffice/shell" sanitizes to the invalid "@genofficeshell". Setting
+    // it explicitly also makes the generated .desktop match the WM_CLASS
+    // Electron reports (it takes that from the executable basename), so the
+    // running window links back to its launcher entry.
+    //
+    // The install dir still comes from productName, so the app lands in
+    // /opt/CMLG Office (quoted by every script that touches it).
+    executableName: 'cmlg-office',
     // Electron takes its X11 app_id from package.json "desktopName"
-    // (genoffice.desktop); syncDesktopName makes electron-builder name the
+    // (cmlg-office.desktop); syncDesktopName makes electron-builder name the
     // .desktop file and its StartupWMClass from the same value. Without it
-    // StartupWMClass falls back to productName ("GenOffice"), which does not
-    // match the "genoffice" WM_CLASS the window actually reports — and X11
+    // StartupWMClass falls back to productName ("CMLG Office"), which does not
+    // match the "cmlg-office" WM_CLASS the window actually reports — and X11
     // compares case-sensitively, so the taskbar shows an unlinked window.
     syncDesktopName: true,
     extraResources: [
@@ -699,14 +713,12 @@ const config = {
   // Same "@genoffice/shell" problem as executableName above: the default deb
   // artifact name derives from package.json "name", and the scope's "/" makes
   // fpm treat "@genoffice" as a directory. Spell the published name out
-  // (genoffice_<version>_amd64.deb, matching the linux-v0.5.149 release).
-  // packageName pins the control Package field to the same value the 0.5.149
-  // deb shipped with — apt treats a different Package name as an unrelated
-  // install, breaking upgrades. Without it, fpm receives productName
-  // "GenOffice" and only happens to downcase it to the right value.
+  // (cmlg-office_<version>_amd64.deb). packageName pins the control Package
+  // field; fpm would otherwise receive productName "CMLG Office" and derive
+  // a control name with a space in it.
   deb: {
-    artifactName: 'genoffice_${version}_${arch}.deb',
-    packageName: 'genoffice',
+    artifactName: 'cmlg-office_${version}_${arch}.deb',
+    packageName: 'cmlg-office',
     // expose the genoffice command line shipped inside the app
     afterInstall: 'build/linux-after-install.sh',
     afterRemove: 'build/linux-after-remove.sh',
@@ -723,8 +735,8 @@ const config = {
   // latest-linux.yml keeps listing exactly what the CDN pipeline uploads
   // (AppImage + deb) and the promote workflow needs no rpm alias.
   rpm: {
-    artifactName: 'genoffice-${version}.${arch}.rpm',
-    packageName: 'genoffice',
+    artifactName: 'cmlg-office-${version}.${arch}.rpm',
+    packageName: 'cmlg-office',
     publish: null,
     afterInstall: 'build/linux-after-install.sh',
     afterRemove: 'build/linux-after-remove.sh',
@@ -737,6 +749,9 @@ const config = {
     fpm: ['--rpm-rpmbuild-define=_build_id_links none'],
   },
   nsis: {
+    // Artifact without the space (CMLG-Office-Setup-<v>.exe): the default
+    // pattern interpolates productName, which is now "CMLG Office".
+    artifactName: `${ARTIFACT_BASE}-Setup-\${version}.\${ext}`,
     oneClick: false,
     allowToChangeInstallationDirectory: true,
   },

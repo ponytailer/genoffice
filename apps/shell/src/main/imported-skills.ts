@@ -19,7 +19,7 @@ import { classifySkill, parseSkillFrontmatter } from '@genoffice/agent-core'
 import type { FoundSkill, RecommendedSkill } from '../shared/found-skill'
 
 /**
- * The skills a user installed into GenOffice.
+ * The skills a user installed into CMLG Office.
  *
  * Only `<userData>/skills/<name>/SKILL.md` counts. Nothing is scanned from a
  * coding agent's directories: a developer's `.claude` holds git, test and

@@ -94,6 +94,8 @@ export type {
 export {
   AI_PROVIDER_ADAPTERS,
   getProviderAdapter,
+  modelEchoesReasoning,
+  modelHasFixedSampling,
   modelLacksVision,
   normalizeBaseUrl,
 } from './registry'

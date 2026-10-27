@@ -134,14 +134,16 @@ import {
 } from './cloud-projects'
 import { handleDroppedFiles } from './dropped-files'
 import { collectLaunchPaths } from './launch-paths'
+import { setGskProxyUrl, watchGskApiKey } from '@genoffice/ai-search'
 import {
-  genofficeLogout,
-  gskLoginInfo,
-  loadGenofficeAuth,
-  setGskProxyUrl,
-  startGenofficeLogin,
-  watchGskApiKey,
-} from '@genoffice/ai-search'
+  clearPlatformCredential,
+  clearPlatformSession,
+  fetchPlatformModels,
+  loadPlatformSession,
+  refreshPlatformProfile,
+  startPlatformLogin,
+} from './platform-account'
+import { clearPlatformAiCache, platformAiSnapshot } from './platform-ai'
 
 import {
   buildDocsMenu,
@@ -157,6 +159,7 @@ import {
   replaceRecentFile,
   registerAiIpc,
   registerProjectIpc,
+  setAiRuntimeResolver,
   setStarredGroup,
   toggleStarredFile,
   registerDocsIpc,
@@ -164,6 +167,7 @@ import {
   setDocsExtraFileMenuItems,
   setDocsMenuGate,
   setDocsShellHooks,
+  aiUnavailableText,
   createAiDocument,
   projectFilePaths,
   projectFileRenamed,
@@ -283,6 +287,7 @@ import {
 } from '../../../html/src/main/html-main'
 import type {
   AccountLoginEvent,
+  AccountStatus,
   AutoSaveDefault,
   AuthorNameSetting,
   FolderListing,
@@ -294,6 +299,8 @@ import type {
   RecentPage,
   RenameResult,
   DocTheme,
+  PlatformAiStatus,
+  PlatformModelsResult,
   StarPromptShow,
   UiTheme,
   FileSearchPage,
@@ -408,7 +415,7 @@ import { applyUpdateChannel, checkForUpdatesNow, initAutoUpdater } from './updat
 import { isUpdateChannel, type UpdateChannel } from '../shared/update-api'
 
 /**
- * GenOffice unified shell: ONE Electron app, ONE BrowserWindow, hosting the
+ * CMLG Office unified shell: ONE Electron app, ONE BrowserWindow, hosting the
  * docs and sheets modules as WebContentsView tabs behind a WPS-style tab
  * strip. The shell owns the lifecycle — single-instance lock, file-
  * association routing by extension, and per-active-tab menu switching.
@@ -429,30 +436,36 @@ for (const stream of [process.stdout, process.stderr]) {
 
 // ANY unpacked run (`npm run shell`, `npm run dev`, `npx electron .`) must not
 // share the installed app's userData or single-instance lock — otherwise a dev
-// run silently quits and forwards its argv to the running installed GenOffice.
+// run silently quits and forwards its argv to the running installed CMLG Office.
 // GENOFFICE_USER_DATA: test drivers point this at a scratch dir so an
 // automated instance can run alongside the dev instance (separate lock).
 if (!app.isPackaged) {
   if (process.env.GENOFFICE_USER_DATA) {
     app.setPath('userData', process.env.GENOFFICE_USER_DATA)
   } else {
-    // The dev profile used to live in "GenOffice Dev"; the space breaks
-    // unquoted shell expansions, rsync targets and .desktop Exec= lines, and
-    // XDG config entries are single tokens (genoffice#1817). "GenOffice-Dev" keeps the
-    // family naming of the packaged profile ("GenOffice"). The old directory
-    // moves once — it sits on the same volume as appData, so the rename is
-    // atomic, and a concurrent dev instance keeps its open file handles.
+    // The dev profile has to be a single token: a space breaks unquoted shell
+    // expansions, rsync targets and .desktop Exec= lines, and XDG config
+    // entries are single tokens (genoffice#1817). "CMLG-Office-Dev" keeps the
+    // family naming of the packaged profile ("CMLG Office"). Earlier names —
+    // "GenOffice Dev", then "GenOffice-Dev" — are moved once; each sits on the
+    // same volume as appData, so the rename is atomic, and a concurrent dev
+    // instance keeps its open file handles.
     const appData = app.getPath('appData')
-    const devDir = join(appData, 'GenOffice-Dev')
-    const oldDevDir = join(appData, 'GenOffice Dev')
+    const devDir = join(appData, 'CMLG-Office-Dev')
+    const oldDevDirs = [join(appData, 'GenOffice-Dev'), join(appData, 'GenOffice Dev')]
     let userData = devDir
-    if (existsSync(oldDevDir) && !existsSync(devDir)) {
-      try {
-        renameSync(oldDevDir, devDir)
-      } catch {
-        // another dev instance holds the directory: keep using the old one so
-        // the profile is not lost and the move is retried on the next launch
-        userData = oldDevDir
+    if (!existsSync(devDir)) {
+      for (const oldDevDir of oldDevDirs) {
+        if (!existsSync(oldDevDir)) continue
+        try {
+          renameSync(oldDevDir, devDir)
+          break
+        } catch {
+          // another dev instance holds the directory: keep using the old one so
+          // the profile is not lost and the move is retried on the next launch
+          userData = oldDevDir
+          break
+        }
       }
     }
     app.setPath('userData', userData)
@@ -471,12 +484,30 @@ if (headlessArgv.kind !== 'none') {
   app.dock?.hide()
 }
 
-// The product rename from "AI Office" to GenOffice changed the userData path; migrate old user data once
+// The app was renamed twice — "AI Office" → "GenOffice" → "CMLG Office" — and
+// each name is a different userData directory (Electron derives it from
+// productName). Migrate the newest legacy profile once, before anything reads
+// a settings file or takes the single-instance lock. A copy (not a rename)
+// keeps the old install usable side by side; the old dir is left in place so a
+// downgrade does not come back to an empty profile.
 if (app.isPackaged) {
-  const oldDir = join(app.getPath('appData'), 'AI Office')
+  const appData = app.getPath('appData')
   const newDir = app.getPath('userData')
   const newEmpty = !existsSync(newDir) || readdirSync(newDir).length === 0
-  if (newEmpty && existsSync(oldDir)) cpSync(oldDir, newDir, { recursive: true })
+  if (newEmpty) {
+    for (const legacyName of ['GenOffice', 'AI Office']) {
+      const legacyDir = join(appData, legacyName)
+      if (legacyDir === newDir || !existsSync(legacyDir)) continue
+      try {
+        cpSync(legacyDir, newDir, { recursive: true })
+        break
+      } catch (err) {
+        // a locked file must not stop the app from starting; the user gets a
+        // fresh profile instead of a crash on launch
+        console.warn(`[userData] could not migrate ${legacyDir}:`, err)
+      }
+    }
+  }
 }
 
 // module build outputs: packaged builds carry them as extraResources
@@ -4088,7 +4119,7 @@ function createShellWindow(): void {
     ...(restored ? { x: restored.x, y: restored.y } : {}),
     minWidth: SHELL_WINDOW_MIN_WIDTH,
     minHeight: SHELL_WINDOW_MIN_HEIGHT,
-    title: 'GenOffice',
+    title: 'CMLG Office',
     // Paint the theme's surface before the renderer's first frame so the window
     // does not flash white in dark mode. nativeTheme.themeSource is already set
     // from the saved theme in app.whenReady, before this window is created.
@@ -4592,7 +4623,7 @@ function newDocTab(): void {
 
 /** MCP: open a blank docs tab and return its webContents id, for the visible-editor bridge */
 function openBlankDocsTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('CMLG Office is not ready')
   const tabId = tabManager.openDocsTab(undefined, { newBlank: true })
   const view = tabManager.docsTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new document tab could not be opened')
@@ -4609,7 +4640,7 @@ function openBlankDocsTabForMcp(): number {
  * marking is skipped, the file name is the agent's business.
  */
 async function openBlankSheetsTabForMcp(): Promise<number> {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('CMLG Office is not ready')
   const filePath = uniquePathIn(defaultSaveDir(), `${tm('untitledSheet')}.xlsx`)
   await atomicWriteFile(filePath, await blankXlsxBuffer())
   const tabId = tabManager.openSheetsTab(filePath)
@@ -4680,7 +4711,7 @@ function abandonBlankTabForMcp(
 
 /** MCP: open a blank slides tab and return its webContents id, for the visible-deck bridge */
 function openBlankSlidesTabForMcp(): number {
-  if (!tabManager) throw new Error('GenOffice is not ready')
+  if (!tabManager) throw new Error('CMLG Office is not ready')
   const tabId = tabManager.openSlidesTab()
   const view = tabManager.slidesTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new presentation tab could not be opened')
@@ -4775,43 +4806,40 @@ function statEntries(paths: string[]): RecentEntry[] {
 }
 
 function registerHomeIpc(): void {
-  // signed-in means GenOffice's own device-code login; the shared gsk CLI key
-  // is only a silent fallback, deliberately not shown here to nudge users onto our key
-  ipcMain.handle(HOME_CHANNELS.accountStatus, async () => {
-    if (!loadGenofficeAuth()) return { loggedIn: false }
-    await proxyBootstrap
-    const info = await gskLoginInfo()
-    if (info) return { loggedIn: true, email: info.email, creditBalance: info.creditBalance }
-    // login-info answering 401 drops an expired key: report signed-out right away
-    return { loggedIn: !!loadGenofficeAuth() }
+  // identity comes from the CMLG AI 数字员工平台: the local session file holds the
+  // platform token + profile captured by the sign-in window
+  ipcMain.handle(HOME_CHANNELS.accountStatus, async (): Promise<AccountStatus> => {
+    const session = loadPlatformSession()
+    if (!session) return { loggedIn: false }
+    const fresh = (await refreshPlatformProfile()) ?? session
+    return {
+      loggedIn: true,
+      email: fresh.user.email ?? fresh.user.username,
+      user: fresh.user,
+    }
   })
 
-  // login progress is streamed to the requesting renderer; the auth URL is
+  // login progress is streamed to the requesting renderer; the platform URL is
   // kept main-side so the "open manually" rescue never opens a renderer-supplied URL
   let pendingLoginUrl = ''
   ipcMain.handle(HOME_CHANNELS.accountLogin, async (event) => {
     analytics.track('login_click')
     const sender = event.sender
     pendingLoginUrl = ''
-    await proxyBootstrap
     const send = (payload: AccountLoginEvent) => {
       if (!sender.isDestroyed()) sender.send(HOME_CHANNELS.accountLoginEvent, payload)
     }
-    // open the browser on the first url event only; later events refresh the rescue URL
-    let opened = false
-    const launched = startGenofficeLogin((progress) => {
-      if (progress.url) {
-        pendingLoginUrl = progress.url
-        if (!opened) {
-          opened = true
-          void shell.openExternal(progress.url)
-        }
+    // startPlatformLogin reports 'launched' itself, so nothing is sent twice
+    return startPlatformLogin((progress) => {
+      if (progress.url) pendingLoginUrl = progress.url
+      if (progress.phase === 'success') {
+        analytics.track('login_success')
+        // a new identity brings a new model list and key: never reuse the old answer
+        clearPlatformAiCache()
+        clearPlatformCredential()
       }
-      if (progress.phase === 'success') analytics.track('login_success')
       send(progress)
     })
-    if (launched) send({ phase: 'launched' })
-    return launched
   })
 
   ipcMain.handle(HOME_CHANNELS.accountLoginOpenUrl, () => {
@@ -4819,9 +4847,29 @@ function registerHomeIpc(): void {
   })
 
   ipcMain.handle(HOME_CHANNELS.accountLogout, async () => {
-    await genofficeLogout()
+    clearPlatformSession()
+    clearPlatformAiCache()
     // the cloud projects cache belongs to the account that just signed out
     clearCloudProjectsStore(cloudProjectsStorePath())
+  })
+
+  // read-only model list for Settings → AI 模型; the platform stays the source of truth
+  ipcMain.handle(HOME_CHANNELS.platformModels, async (): Promise<PlatformModelsResult> => {
+    const session = loadPlatformSession()
+    if (!session) return { loggedIn: false, models: [] }
+    const result = await fetchPlatformModels(session)
+    // a refused token means the session is gone (revoked/expired): clear it so
+    // the account UI shows the signed-out state instead of an empty model list
+    if (!result.loggedIn) clearPlatformSession()
+    return result
+  })
+
+  // whether inference may run, read by the composer before it offers a send:
+  // the platform owns the models, so "no synced model" has to be visible to the UI
+  ipcMain.handle(HOME_CHANNELS.platformAiStatus, async (): Promise<PlatformAiStatus> => {
+    // no base settings needed: only the status half of the snapshot is returned
+    const snapshot = await platformAiSnapshot(null)
+    return snapshot.status
   })
 
   ipcMain.handle(HOME_CHANNELS.getAppVersion, (): string => app.getVersion())
@@ -6966,6 +7014,23 @@ app.on('second-instance', (_event, argv, _cwd, additionalData) => {
 
 installNavigationGuard(app)
 installContextMenu(app, () => contextMenuLabels(currentLang()))
+// Inference is platform-owned in this build: every ai:* channel resolves its
+// settings through the 数字员工平台, and refuses the turn when the platform has
+// not synced a model. Installed before registerAiIpc() so the very first
+// ai:get-settings already answers with the platform's configuration.
+let platformAiRefusalReason: 'signed-out' | 'no-models' | 'no-key' = 'no-models'
+setAiRuntimeResolver({
+  resolve: async (stored) => {
+    const snapshot = await platformAiSnapshot(stored)
+    if (!snapshot.settings) {
+      platformAiRefusalReason =
+        snapshot.status.reason === 'ok' ? 'no-models' : snapshot.status.reason
+    }
+    return snapshot.settings
+  },
+  // read at refusal time, so the message matches the reason the last resolve saw
+  unavailableText: () => aiUnavailableText(platformAiRefusalReason),
+})
 registerAiIpc()
 const openHomeSettings = (section: 'aiModel' | 'skills'): void => {
   const win = shellWindow
@@ -7101,14 +7166,10 @@ app.whenReady().then(async () => {
     app.quit()
     return
   }
-  // another GenOffice-family app re-logging in rotates the shared key; the
-  // home page re-reads its account status. A logout that leaves only the
-  // gsk CLI fallback key is not a login
-  stopAuthWatch = watchGskApiKey(() => {
-    if (!loadGenofficeAuth()) return
-    for (const w of BrowserWindow.getAllWindows())
-      w.webContents.send(HOME_CHANNELS.accountLoginEvent, { phase: 'success' })
-  })
+  // another CMLG Office-family app re-logging in rotates the shared gsk key that AI
+  // inference uses. Account identity is the platform session now, so this watch
+  // only keeps the cached key fresh and broadcasts no account event.
+  stopAuthWatch = watchGskApiKey(() => undefined)
   // a registry left by a crashed instance must not block genoffice writes
   ownsOpenDocumentsRegistry = true
   publishOpenDocuments(OPEN_DOCUMENTS_PATH(), [])

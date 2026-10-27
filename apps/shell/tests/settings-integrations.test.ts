@@ -124,13 +124,15 @@ async function openIntegrations(
           onClose: vi.fn(),
           onLogin: vi.fn(),
           onLogout: vi.fn(),
+          // the integrations pane has no nav entry in the CMLG build; the
+          // settings-target deep link is how it stays reachable
+          target: { section: 'integrations' },
           ...extra,
         }),
       ),
     )
     await Promise.resolve()
   })
-  await click(buttonWithText('Integrations'))
 }
 
 describe('Settings → Integrations', () => {
@@ -181,12 +183,12 @@ describe('Settings → Integrations', () => {
     expect(
       mcpLaunch({
         status: 'present',
-        launcherDir: '/Applications/GenOffice.app/Contents/Resources/cli',
+        launcherDir: '/Applications/CMLG Office.app/Contents/Resources/cli',
       }),
     ).toEqual({ command: 'genoffice', args: ['mcp'] })
-    const winDir = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\GenOffice\\resources\\cli'
+    const winDir = 'C:\\Users\\Jane Doe\\AppData\\Local\\Programs\\CMLG Office\\resources\\cli'
     const win = {
-      command: `${winDir}\\..\\..\\GenOffice.exe`,
+      command: `${winDir}\\..\\..\\CMLG Office.exe`,
       args: [`${winDir}\\genoffice.cjs`, 'mcp'],
       env: { ELECTRON_RUN_AS_NODE: '1' },
     }
@@ -255,13 +257,13 @@ describe('Settings → Integrations', () => {
     expect(host.textContent).toContain('Saved to /Users/u/Downloads/genoffice-skill-2.1.0.zip')
   })
 
-  it('marks the Integrations entry while a detected assistant holds an older skill', async () => {
+  it('marks the Skills entry while a detected assistant holds an older skill', async () => {
     const onDue = vi.fn()
     await openIntegrations(
       { status: async () => baseStatus() },
       { skillUpdateDue: true, onSkillUpdateDue: onDue },
     )
-    expect(buttonWithText('Integrations')!.querySelector('.set-nav-dot')).toBeTruthy()
+    expect(buttonWithText('Skills')!.querySelector('.set-nav-dot')).toBeTruthy()
     // codex is outdated in baseStatus → the pane reports "update due" once it has probed
     expect(onDue).toHaveBeenLastCalledWith(true)
 
@@ -271,7 +273,7 @@ describe('Settings → Integrations', () => {
       { status: async () => fresh },
       { skillUpdateDue: false, onSkillUpdateDue: onDue },
     )
-    expect(buttonWithText('Integrations')!.querySelector('.set-nav-dot')).toBeNull()
+    expect(buttonWithText('Skills')!.querySelector('.set-nav-dot')).toBeNull()
     expect(onDue).toHaveBeenLastCalledWith(false)
   })
 })

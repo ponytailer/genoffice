@@ -87,7 +87,7 @@ function electronCompatArgs(): string[] {
 
 /**
  * API key for Genspark LLM proxy / tool_cli auth; '' when not logged in.
- * Priority: GSK_API_KEY env → GenOffice's own key (bills to us via its
+ * Priority: GSK_API_KEY env → CMLG Office's own key (bills to us via its
  * key_name) → shared gsk CLI login (bills to the Claw bucket).
  */
 export function gskApiKey(): string {
@@ -109,7 +109,7 @@ export function gskApiKey(): string {
 // ── Rejected keys (401) ─────────────────────────────────────────────
 
 /**
- * Keys the server answered 401 for (expired / revoked). GenOffice's own key
+ * Keys the server answered 401 for (expired / revoked). CMLG Office's own key
  * is also deleted from disk; env and shared gsk CLI keys belong to someone
  * else, so they are only skipped for the rest of this process.
  */
@@ -182,7 +182,7 @@ export function resetGskRejectedKeys(): void {
 }
 
 /**
- * Fires when the effective gsk key changes on disk — another GenOffice-family
+ * Fires when the effective gsk key changes on disk — another CMLG Office-family
  * app re-logging in mints a new key and revokes the one this process holds.
  * Polls by path (watchFile): auth.json is replaced whole, and fs.watch misses
  * events for a moment after it is armed.

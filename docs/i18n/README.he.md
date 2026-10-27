@@ -470,9 +470,7 @@ npm test             # בדיקות יחידה של המנוע והאפליקצ�
 npm run typecheck    # tsc --noEmit על כל ה-workspace
 npm run dev          # כל שש האפליקציות + ה-shell מול שרתי הפיתוח של Vite
 npm run dev:docs     # אפליקציה בודדת (אותה תבנית עובדת לכל workspace)
-npm run dist:mac     # אריזת ה-dmg עבור macOS (מייצר מחדש את הודעות הצדדים השלישיים)
-npm run dist:win     # אריזת מתקין ה-nsis עבור Windows
-npm run dist:linux   # אריזת AppImage + deb + rpm עבור Linux
+npm run dist         # package the host platform (--target mac|win|linux, --dir)
 ```
 
 אפליקציית ה-sheets דורשת בנוסף toolchain של Rust בשביל ה-sidecar של

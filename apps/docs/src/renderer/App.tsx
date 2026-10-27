@@ -759,7 +759,7 @@ const TABLE_MENU_COMMANDS: Partial<Record<MenuCommand, (widthPx: number) => Comm
   'table-insert-cols-left': (w) => insertRowsOrColumns(1, 'left', w),
   'table-insert-cols-right': (w) => insertRowsOrColumns(1, 'right', w),
   'table-delete-table': () => deleteTable,
-  'table-delete-columns': () => deleteTableColumn,
+  'table-delete-columns': () => deleteTableColumn(),
   'table-delete-rows': () => deleteRow,
   'table-select-table': () => selectTablePart('table'),
   'table-select-column': () => selectTablePart('column'),
@@ -1898,7 +1898,7 @@ export function App() {
 
   // window title follows the document, so the OS window list and Switch Window show file names
   useEffect(() => {
-    document.title = doc ? doc.fileName : 'GenOffice Docs'
+    document.title = doc ? doc.fileName : 'CMLG Office Docs'
   }, [doc])
 
   useEffect(() => window.desktop.onTeardown?.(() => setTornDown(true)), [])
@@ -2706,7 +2706,7 @@ export function App() {
       window.desktop.onZoteroRequest(async (request) => {
         try {
           const activeEditor = editorRef.current
-          if (!activeEditor) throw new Error('No active GenOffice document')
+          if (!activeEditor) throw new Error('No active CMLG Office document')
           const controller =
             zoteroControllerRef.current ??
             new ZoteroDocumentController(activeEditor, {

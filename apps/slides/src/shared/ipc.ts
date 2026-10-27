@@ -1758,7 +1758,7 @@ export interface SlidesApi {
   openAiModelSettings: () => Promise<void>
   /** shell only: switch to Home and open Settings › Integrations (the skills list) */
   openSkillsSettings: () => Promise<void>
-  /** the skills installed into GenOffice's own folder */
+  /** the skills installed into CMLG Office's own folder */
   skillsList: () => Promise<UserSkillEntry[]>
   /** one installed skill's body, by name; the main process resolves the path */
   skillText: (name: string) => Promise<string>

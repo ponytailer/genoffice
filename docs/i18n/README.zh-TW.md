@@ -505,9 +505,7 @@ npm test             # 引擎 + 應用程式單元測試（docs/sheets/slides �
 npm run typecheck    # 對整個 workspace 執行 tsc --noEmit
 npm run dev          # 六個編輯器 + 外殼，皆跑在 Vite 開發伺服器上
 npm run dev:docs     # 只跑單一應用程式（其他 workspace 也是同樣模式）
-npm run dist:mac     # 打包 macOS dmg（會重新產生第三方授權聲明）
-npm run dist:win     # 打包 Windows nsis 安裝程式
-npm run dist:linux   # 打包 Linux AppImage + deb + rpm
+npm run dist         # package the host platform (--target mac|win|linux, --dir)
 ```
 
 sheets 應用程式還需要 Rust 工具鏈來編譯其 xlsx sidecar

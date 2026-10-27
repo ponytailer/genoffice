@@ -1,6 +1,6 @@
 # Der Startbildschirm: wo Ihre Dateien liegen
 
-Die Startseite ist GenOffices Startseite: eine Navigationsleiste links, Dateilisten und Schnellerstellungskarten rechts.
+Die Startseite ist CMLG Offices Startseite: eine Navigationsleiste links, Dateilisten und Schnellerstellungskarten rechts.
 
 ![Der Startbildschirm](img/home-screen.png)
 
@@ -36,7 +36,7 @@ Haken Sie das Kontrollkästchen einer Zeile an oder klicken Sie mit ⌘/Strg, um
 Das Suchfeld oben erfasst gleichzeitig zwei Dinge:
 
 - **Dateinamen**: schnelles Filtern nach Namen.
-- **Dateinhalte**: GenOffice indexiert Ihre Dateien im Hintergrund (Text in docx/xlsx/pptx/pdf/md/html), sodass die Volltextsuche auch Dateien findet. Umfang und Schalter stehen in den Sucheinstellungen.
+- **Dateinhalte**: CMLG Office indexiert Ihre Dateien im Hintergrund (Text in docx/xlsx/pptx/pdf/md/html), sodass die Volltextsuche auch Dateien findet. Umfang und Schalter stehen in den Sucheinstellungen.
 
 ## Schnellstart-Karten
 
@@ -66,6 +66,6 @@ Was die einzelnen Karten tun:
 
 ## Cloud-Projekte (Genspark Projects)
 
-- Für die erste Nutzung ist eine Anmeldung an Ihrem Genspark-Konto nötig (Gerätecode-Verfahren: GenOffice zeigt einen Code, Sie schließen die Anmeldung im Browser ab).
+- Für die erste Nutzung ist eine Anmeldung an Ihrem Genspark-Konto nötig (Gerätecode-Verfahren: CMLG Office zeigt einen Code, Sie schließen die Anmeldung im Browser ab).
 - Die Projektliste wird mit dem Web synchronisiert; „In Browser öffnen“ führt dorthin, um weiterzuarbeiten.
 - Ohne Anmeldung ist keine der lokalen Funktionen beeinträchtigt.

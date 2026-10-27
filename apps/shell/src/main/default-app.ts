@@ -80,7 +80,7 @@ export function execFileRunner(cmd: string, args: string[]): Promise<string> {
   })
 }
 
-/** /Applications/GenOffice.app/Contents/MacOS/GenOffice → /Applications/GenOffice.app */
+/** /Applications/CMLG Office.app/Contents/MacOS/CMLG Office → /Applications/CMLG Office.app */
 export function macAppBundlePath(exePath: string): string | null {
   let dir = exePath
   for (let i = 0; i < 6; i++) {

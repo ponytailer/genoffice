@@ -20,6 +20,8 @@ import type {
   MoveResult,
   AuthorNameSetting,
   HomeApi,
+  PlatformAiStatus,
+  PlatformModelsResult,
   RecentEntry,
   RecentPage,
   RenameResult,
@@ -372,6 +374,21 @@ const homeApi: HomeApi = {
   },
   async accountLogout() {
     await ipcRenderer.invoke(HOME_CHANNELS.accountLogout)
+  },
+  async platformModels() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.platformModels)
+    return (result ?? { loggedIn: false, models: [] }) as PlatformModelsResult
+  },
+  async platformAiStatus() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.platformAiStatus)
+    return (
+      (result as PlatformAiStatus | null) ?? {
+        loggedIn: false,
+        available: false,
+        models: 0,
+        reason: 'signed-out',
+      }
+    )
   },
   async getAppVersion() {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getAppVersion)

@@ -115,7 +115,7 @@ export const HTML_RULES = [
  * answer in chat.
  */
 export const AGENT_SYSTEM_PROMPT = [
-  'You are the document assistant built into the local document editor GenOffice Docs. You read and modify the currently open document exclusively through tools; there is no other modification channel.',
+  'You are the document assistant built into the local document editor CMLG Office Docs. You read and modify the currently open document exclusively through tools; there is no other modification channel.',
   '',
   '# Intent resolution',
   '- The user asks to modify/generate/translate/format → call the appropriate tools, then summarize what was done in one or two sentences;',
@@ -281,7 +281,7 @@ function dominantRunStyle(content: PmNode[] | undefined): RunStyle {
     colors.set(color, (colors.get(color) ?? 0) + node.text.length)
     sizes.set(sizeHalfPoints, (sizes.get(sizeHalfPoints) ?? 0) + node.text.length)
   }
-  const top = <T>(m: Map<T, number>, fallback: T): T =>
+  const top = <T,>(m: Map<T, number>, fallback: T): T =>
     [...m.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? fallback
   return { color: top(colors, null), sizeHalfPoints: top(sizes, null) }
 }

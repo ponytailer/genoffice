@@ -191,7 +191,7 @@ export const de = {
   ribbonReplaceTip: 'Text suchen und ersetzen',
   ribbonSelectAll: 'Alles markieren',
   ribbonSelectAllTip: 'Das gesamte Dokument markieren',
-  ribbonAiAssistant: 'Genspark',
+  ribbonAiAssistant: 'CMLG AI',
   ribbonAiAssistantTip: 'KI-Assistenten öffnen',
   ribbonRemoveTableStyleTip: 'Tabellenformatvorlage entfernen',
   ribbonNoStyle: 'Keine Formatvorlage',
@@ -591,7 +591,8 @@ export const de = {
     'An der aktuellen Position einen Seiten-, Spalten- oder Abschnittsumbruch einfügen',
   ribbonBreaksPageGroup: 'Seitenumbrüche',
   ribbonBreakPage: 'Seite',
-  ribbonBreakPageDesc: 'Die Stelle markieren, an der eine Seite endet und die nächste beginnt (⌘↩)',
+  ribbonBreakPageDesc:
+    'Die Stelle markieren, an der eine Seite endet und die nächste beginnt (⌘↩)',
   ribbonBreakColumn: 'Spalte',
   ribbonBreakColumnDesc: 'Der Text nach dem Spaltenumbruch beginnt in der nächsten Spalte (⇧⌘↩)',
   ribbonBreakTextWrapping: 'Textumbruch',

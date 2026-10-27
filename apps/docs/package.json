@@ -1,6 +1,6 @@
 {
   "name": "@genoffice/docs",
-  "productName": "GenOffice Docs",
+  "productName": "CMLG Office Docs",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
@@ -46,10 +46,10 @@
     "vite": "^7.3.7",
     "vitest": "^4.1.12"
   },
-  "author": "GenOffice",
+  "author": "CMLG Office",
   "build": {
     "appId": "com.genoffice.docs",
-    "productName": "GenOffice Docs",
+    "productName": "CMLG Office Docs",
     "electronVersion": "43.3.0",
     "artifactName": "AIDocx-${version}-${arch}.${ext}",
     "directories": {

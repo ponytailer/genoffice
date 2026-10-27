@@ -506,9 +506,7 @@ npm test             # tests unitaires moteur + applications (docs/sheets/slides
 npm run typecheck    # tsc --noEmit sur tout le workspace
 npm run dev          # les six éditeurs + la coquille avec les serveurs de dev Vite
 npm run dev:docs     # une seule application (le même schéma fonctionne par workspace)
-npm run dist:mac     # empaquette le dmg macOS (régénère les mentions tierces)
-npm run dist:win     # empaquette l'installateur nsis Windows
-npm run dist:linux   # empaquette l'AppImage + deb + rpm Linux
+npm run dist         # package the host platform (--target mac|win|linux, --dir)
 ```
 
 L'application sheets a en outre besoin d'une chaîne d'outils Rust pour son

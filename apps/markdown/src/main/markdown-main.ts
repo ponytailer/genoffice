@@ -396,7 +396,7 @@ interface RuntimePaths {
   preloadPath: string
   rendererUrl?: string
   rendererFile?: string
-  /** Shell router used to open exported PDFs in a new GenOffice tab. */
+  /** Shell router used to open exported PDFs in a new CMLG Office tab. */
   openGeneratedPath?: (path: string) => boolean
 }
 
@@ -843,8 +843,9 @@ function registerMarkdownIpc(): void {
     typeof path === 'string' ? takeWikiFragment(path) : '',
   )
 
-  ipcMain.handle(MARKDOWN_CHANNELS.listWikiNotes, async (): Promise<WikiNoteEntry[]> =>
-    listWikiNotes(configuredDefaultSaveDir(app), nodeFs()),
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.listWikiNotes,
+    async (): Promise<WikiNoteEntry[]> => listWikiNotes(configuredDefaultSaveDir(app), nodeFs()),
   )
 
   ipcMain.handle(
@@ -863,14 +864,17 @@ function registerMarkdownIpc(): void {
     },
   )
 
-  ipcMain.handle(MARKDOWN_CHANNELS.wikiBacklinks, (_e, path: unknown): Promise<WikiBacklink[]> =>
-    typeof path === 'string'
-      ? wikiBacklinks(configuredDefaultSaveDir(app), path, nodeVaultFs())
-      : Promise.resolve([]),
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.wikiBacklinks,
+    (_e, path: unknown): Promise<WikiBacklink[]> =>
+      typeof path === 'string'
+        ? wikiBacklinks(configuredDefaultSaveDir(app), path, nodeVaultFs())
+        : Promise.resolve([]),
   )
 
-  ipcMain.handle(MARKDOWN_CHANNELS.wikiGraph, (): Promise<WikiGraph> =>
-    wikiGraph(configuredDefaultSaveDir(app), nodeVaultFs()),
+  ipcMain.handle(
+    MARKDOWN_CHANNELS.wikiGraph,
+    (): Promise<WikiGraph> => wikiGraph(configuredDefaultSaveDir(app), nodeVaultFs()),
   )
 
   ipcMain.handle(

@@ -226,7 +226,19 @@ export function removeMcpEntry(id: AgentId, file: string): boolean {
   return true
 }
 
-const LAUNCHER_NAMES = new Set(['genoffice', 'genoffice.cmd', 'genoffice.exe'])
+/**
+ * Names our launcher goes by. `genoffice*` keeps entries written before the
+ * CMLG Office rename recognisable; `cmlg office.exe` is the packaged Windows
+ * app binary that now sits beside the CLI (lower-cased by fileName()).
+ */
+const LAUNCHER_NAMES = new Set([
+  'genoffice',
+  'genoffice.cmd',
+  'genoffice.exe',
+  'cmlg office',
+  'cmlg office.exe',
+  'cmlg-office',
+])
 
 /**
  * Any genoffice launcher, whatever install it came from (an older app path is

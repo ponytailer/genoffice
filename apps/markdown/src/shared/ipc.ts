@@ -298,7 +298,9 @@ export type ImageExportPreparation =
   | { ok: false; error: string }
 
 export type ExportResult =
-  { ok: true; path: string } | { ok: true; canceled: true } | { ok: false; error: string }
+  | { ok: true; path: string }
+  | { ok: true; canceled: true }
+  | { ok: false; error: string }
 
 export interface ImageData {
   base64: string
@@ -457,7 +459,7 @@ export interface MarkdownApi {
   openAiModelSettings(): Promise<void>
   /** shell only: switch to Home and open Settings › Integrations (the skills list) */
   openSkillsSettings(): Promise<void>
-  /** the skills the user installed into GenOffice (userData/skills) */
+  /** the skills the user installed into CMLG Office (userData/skills) */
   skillsList(): Promise<UserSkillEntry[]>
   /** the body of one installed skill, by name — the main process resolves the path */
   skillText(name: string): Promise<string>

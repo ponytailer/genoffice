@@ -118,29 +118,46 @@ function installedAppBinaries(
   resources: string | null = packagedResourcesDir(),
 ): string[] {
   const shipped = resources ? appBinaryForResources(resources, platform) : null
+  // Both brand generations are probed: an install that predates the CMLG
+  // Office rename still answers by its old name, and the CLI itself keeps the
+  // `genoffice` command name either way.
   switch (platform) {
     case 'darwin':
       return [
         ...(shipped ? [shipped] : []),
+        '/Applications/CMLG Office.app/Contents/MacOS/CMLG Office',
+        join(homedir(), 'Applications/CMLG Office.app/Contents/MacOS/CMLG Office'),
         '/Applications/GenOffice.app/Contents/MacOS/GenOffice',
         join(homedir(), 'Applications/GenOffice.app/Contents/MacOS/GenOffice'),
       ]
     case 'win32':
       return [
         ...(shipped ? [shipped] : []),
+        env.LOCALAPPDATA ? join(env.LOCALAPPDATA, 'Programs', 'CMLG Office', 'CMLG Office.exe') : '',
+        env.ProgramFiles ? join(env.ProgramFiles, 'CMLG Office', 'CMLG Office.exe') : '',
         env.LOCALAPPDATA ? join(env.LOCALAPPDATA, 'Programs', 'GenOffice', 'GenOffice.exe') : '',
         env.ProgramFiles ? join(env.ProgramFiles, 'GenOffice', 'GenOffice.exe') : '',
       ].filter(Boolean)
     default:
-      return [...(shipped ? [shipped] : []), '/opt/GenOffice/genoffice', '/usr/bin/genoffice']
+      return [
+        ...(shipped ? [shipped] : []),
+        '/opt/CMLG Office/cmlg-office',
+        '/opt/GenOffice/genoffice',
+        '/usr/bin/genoffice',
+      ]
   }
 }
 
+/**
+ * The GUI binary beside a packaged `Resources` dir. macOS and Windows name it
+ * after productName ("CMLG Office.app" / "CMLG Office.exe"); Linux after
+ * linux.executableName.
+ */
 export function appBinaryForResources(resources: string, platform: NodeJS.Platform): string {
   const install = dirname(resources)
-  if (platform === 'darwin') return join(install, 'MacOS', 'GenOffice')
-  if (platform === 'win32') return join(install, 'GenOffice.exe')
-  return join(install, 'genoffice')
+  if (platform === 'darwin') return join(install, 'MacOS', 'CMLG Office')
+  if (platform === 'win32') return join(install, 'CMLG Office.exe')
+  return join(install, 'cmlg-office')
 }
 
 /**

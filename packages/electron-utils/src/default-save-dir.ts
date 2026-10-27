@@ -1,10 +1,10 @@
 /// The default folder where new/untitled files land on their first (silent)
 /// save and where AI-generated drafts go. Historically hardcoded to
-/// <Documents>/GenOffice; now user-configurable via the `defaultSaveDir` key
+/// <Documents>/CMLGOffice; now user-configurable via the `defaultSaveDir` key
 /// in userData/app-settings.json (set from the home screen's account menu).
 /// Every editor main module resolves through here so they all honor the same
 /// setting.
-import { accessSync, constants, existsSync, mkdirSync, readFileSync, statSync } from 'node:fs'
+import { accessSync, constants, existsSync, mkdirSync, readFileSync, renameSync, statSync } from 'node:fs'
 import { dirname, isAbsolute, join, resolve } from 'node:path'
 
 /** the subset of Electron's `app` needed here (kept structural: this package has no Electron dependency) */
@@ -74,9 +74,41 @@ export function resolveDefaultSaveDir(configured: string | null, fallbackDir: st
   return fallbackDir
 }
 
+/**
+ * The folder name the app files new documents into. It was `GenOffice` before
+ * the CMLG Office rename; `adoptLegacySaveDir` carries an old folder over.
+ */
+export const DEFAULT_SAVE_DIR_NAME = 'CMLGOffice'
+const LEGACY_SAVE_DIR_NAME = 'GenOffice'
+
+/**
+ * Move `<Documents>/GenOffice` to `<Documents>/CMLGOffice` once, so an upgraded
+ * install does not appear to have lost its files when new documents start
+ * landing in a differently named folder.
+ *
+ * A rename (not copy) keeps every path inside the folder valid and is atomic
+ * on the same volume. When the target already exists, or the rename is
+ * refused (another process holding a file, a synced/read-only Documents dir),
+ * the legacy folder is left untouched and returned so callers keep using it —
+ * the app never deletes or merges user documents. Returns the folder to use.
+ */
+export function adoptLegacySaveDir(documentsDir: string): string {
+  const current = join(documentsDir, DEFAULT_SAVE_DIR_NAME)
+  const legacy = join(documentsDir, LEGACY_SAVE_DIR_NAME)
+  if (existsSync(current) || !existsSync(legacy)) return current
+  try {
+    renameSync(legacy, current)
+    return current
+  } catch {
+    // locked or cross-device: keep pointing at the folder the files are in
+    return legacy
+  }
+}
+
 /** convenience for the Electron mains: settings lookup + fallback in one call */
 export function configuredDefaultSaveDir(app: PathProvider): string {
   const settingsPath = join(app.getPath('userData'), 'app-settings.json')
-  const fallback = join(app.getPath('documents'), 'GenOffice')
+  const documents = app.getPath('documents')
+  const fallback = adoptLegacySaveDir(documents)
   return resolveDefaultSaveDir(readDefaultSaveDirSetting(settingsPath), fallback)
 }

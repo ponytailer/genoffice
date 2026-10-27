@@ -53,7 +53,7 @@ describe('resolveDefaultSaveDir', () => {
   })
 
   it('creates and returns the fallback when nothing is configured', () => {
-    const fallback = join(root, 'Documents', 'GenOffice')
+    const fallback = join(root, 'Documents', 'CMLGOffice')
     expect(resolveDefaultSaveDir(null, fallback)).toBe(fallback)
     expect(existsSync(fallback)).toBe(true)
   })
@@ -90,14 +90,45 @@ describe('configuredDefaultSaveDir', () => {
     expect(configuredDefaultSaveDir(app)).toBe(custom)
   })
 
-  it('falls back to <Documents>/GenOffice without a setting', () => {
+  it('falls back to <Documents>/CMLGOffice without a setting', () => {
     const userData = join(root, 'userData')
     const documents = join(root, 'Documents')
     mkdirSync(userData, { recursive: true })
     const app = {
       getPath: (name: 'userData' | 'documents') => (name === 'userData' ? userData : documents),
     }
-    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'GenOffice'))
-    expect(existsSync(join(documents, 'GenOffice'))).toBe(true)
+    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'CMLGOffice'))
+    expect(existsSync(join(documents, 'CMLGOffice'))).toBe(true)
+  })
+
+  it('adopts the pre-rename <Documents>/GenOffice folder instead of orphaning it', () => {
+    const userData = join(root, 'userData')
+    const documents = join(root, 'Documents')
+    mkdirSync(userData, { recursive: true })
+    const legacy = join(documents, 'GenOffice')
+    mkdirSync(legacy, { recursive: true })
+    writeFileSync(join(legacy, 'budget.docx'), 'x')
+    const app = {
+      getPath: (name: 'userData' | 'documents') => (name === 'userData' ? userData : documents),
+    }
+    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'CMLGOffice'))
+    expect(existsSync(join(documents, 'CMLGOffice', 'budget.docx'))).toBe(true)
+    expect(existsSync(legacy)).toBe(false)
+  })
+
+  it('leaves both folders alone when the new name already exists', () => {
+    const userData = join(root, 'userData')
+    const documents = join(root, 'Documents')
+    mkdirSync(userData, { recursive: true })
+    mkdirSync(join(documents, 'GenOffice'), { recursive: true })
+    mkdirSync(join(documents, 'CMLGOffice'), { recursive: true })
+    writeFileSync(join(documents, 'GenOffice', 'old.docx'), 'x')
+    const app = {
+      getPath: (name: 'userData' | 'documents') => (name === 'userData' ? userData : documents),
+    }
+    expect(configuredDefaultSaveDir(app)).toBe(join(documents, 'CMLGOffice'))
+    // never merge: the legacy folder keeps its own files
+    expect(existsSync(join(documents, 'GenOffice', 'old.docx'))).toBe(true)
+    expect(existsSync(join(documents, 'CMLGOffice', 'old.docx'))).toBe(false)
   })
 })

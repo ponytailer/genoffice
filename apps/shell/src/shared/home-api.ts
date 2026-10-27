@@ -277,7 +277,7 @@ export interface HomeApi {
   // ---- knowledge-base ask panel: the reader's starred corpus, askable ----
   /** the starred corpus as the AI's knowledge base */
   kbList(): Promise<KbFileInfo[]>
-  /** the skills the user installed into GenOffice */
+  /** the skills the user installed into CMLG Office */
   skillsList(): Promise<UserSkillEntry[]>
   /** one installed skill's body, by name */
   skillText(name: string): Promise<string>
@@ -380,17 +380,21 @@ export interface HomeApi {
   /** whether the launch and periodic background update checks run (default on) */
   getAutoUpdateCheck(): Promise<boolean>
   setAutoUpdateCheck(on: boolean): Promise<void>
-  /** Genspark account status (gsk login state; to be upgraded to a signup/account system later) */
+  /** CMLG AI 数字员工平台 account status (platform sign-in state) */
   accountStatus(): Promise<AccountStatus>
-  /** start Genspark login (opens the browser; accountStatus flips to logged-in on completion); returns whether the launch succeeded */
+  /** open the platform sign-in window; accountStatus flips to logged-in on completion; returns whether the launch succeeded */
   accountLogin(): Promise<boolean>
+  /** the employee's model configs from the platform (read-only; empty when signed out) */
+  platformModels(): Promise<PlatformModelsResult>
+  /** whether inference may run right now, and why not (drives the composer gate) */
+  platformAiStatus(): Promise<PlatformAiStatus>
   /** progress events for the login started via accountLogin; returns an unsubscribe */
   onAccountLogin(handler: (ev: AccountLoginEvent) => void): () => void
   /** a tab asked for the settings modal (composer model chip → AI Model section) */
   onOpenSettings(handler: (target: { section: string }) => void): () => void
   /** re-open the pending login auth URL in the default browser (rescue when auto-open failed) */
   openLoginUrl(): Promise<void>
-  /** log out (clears the saved API key; the login state is shared globally with the gsk CLI) */
+  /** sign out of the platform account (the local session file is removed) */
   accountLogout(): Promise<void>
   /** app version (from package.json / electron app.getVersion) */
   getAppVersion(): Promise<string>
@@ -448,7 +452,7 @@ export interface HomeApi {
   getAiPanelPrefs(): Promise<AiPanelPrefs>
   /** merge + persist; broadcasts 'app:ai-panel-prefs-changed' to all web contents */
   setAiPanelPrefs(patch: Partial<AiPanelPrefs>): Promise<AiPanelPrefs>
-  /** effective default save folder for new/untitled files (configured in userData/app-settings.json, falls back to <Documents>/GenOffice) */
+  /** effective default save folder for new/untitled files (configured in userData/app-settings.json, falls back to <Documents>/CMLGOffice) */
   getDefaultSaveDir(): Promise<string>
   /** directory picker to change the default save folder; resolves to the new folder, or null when canceled or the pick was unusable */
   pickDefaultSaveDir(): Promise<string | null>
@@ -553,20 +557,85 @@ export interface CloudProjectsSnapshot {
   syncedAt: number
 }
 
-export interface AccountStatus {
-  /** gsk is installed and logged in */
-  loggedIn: boolean
+/** the signed-in employee, as reported by the CMLG AI 数字员工平台 */
+export interface PlatformUser {
+  id: string
+  username: string
+  displayName?: string
+  department?: string
+  /** 'admin' | 'member' */
+  role?: string
   email?: string
-  /** remaining Genspark credits (absent when the balance query failed) */
-  creditBalance?: number
+  /** platform-side avatar pointer (fetch with the session token) */
+  avatarUrl?: string
+  tenantId?: string
 }
 
-/** login flow progress pushed from main (gsk login CLI output) */
+/** one model config the platform hands this employee (read-only here) */
+export interface PlatformModel {
+  id: string
+  name: string
+  model: string
+  provider?: string
+  apiProtocol?: string
+  baseUrl?: string
+  temperature?: number
+  maxOutputTokens?: number
+  isDefault: boolean
+  isIntentRecognition: boolean
+  isGlobalFree: boolean
+  enabled: boolean
+  trustStatus?: string
+  updatedAt?: string
+}
+
+export interface PlatformModelsResult {
+  loggedIn: boolean
+  models: PlatformModel[]
+  /** why the list could not be fetched (network / HTTP); absent on success */
+  error?: string
+}
+
+/** Why inference is off, so the UI can point at the right fix. */
+export type PlatformAiReason =
+  /** no platform session at all */
+  | 'signed-out'
+  /** signed in, but the platform has synced no enabled model for this employee */
+  | 'no-models'
+  /** models exist, but no approved gateway API key could be read */
+  | 'no-key'
+  /** a model and a key are both available */
+  | 'ok'
+
+/**
+ * Whether AI inference may run, and why not. The renderer gates the composer
+ * and the inline hint on this instead of on the Genspark login state, which no
+ * longer exists in a CMLG deployment.
+ */
+export interface PlatformAiStatus {
+  loggedIn: boolean
+  available: boolean
+  /** number of enabled models the platform synced */
+  models: number
+  reason: PlatformAiReason
+  /** display name of the selected model, when available */
+  model?: string
+}
+
+export interface AccountStatus {
+  /** signed in to the CMLG AI 数字员工平台 */
+  loggedIn: boolean
+  /** user's email, else their login name — kept for the compact account button */
+  email?: string
+  user?: PlatformUser
+}
+
+/** login flow progress pushed from main (platform sign-in window) */
 export interface AccountLoginEvent {
   phase: 'launched' | 'url' | 'success' | 'error'
   url?: string
   expiresInSec?: number
-  /** 'network' | 'expired' | raw CLI error text */
+  /** 'network' | 'expired' | 'cancelled' | raw error text */
   error?: string
 }
 
@@ -688,6 +757,8 @@ export const HOME_CHANNELS = {
   openSettings: 'home:open-settings',
   accountLoginOpenUrl: 'home:account-login-open-url',
   accountLogout: 'home:account-logout',
+  platformModels: 'home:platform-models',
+  platformAiStatus: 'home:platform-ai-status',
   getAppVersion: 'home:get-app-version',
   onboardingSeen: 'home:onboarding-seen',
   setOnboardingSeen: 'home:set-onboarding-seen',

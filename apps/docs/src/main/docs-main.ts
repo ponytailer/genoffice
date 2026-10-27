@@ -74,6 +74,12 @@ import {
 } from '@genoffice/electron-utils'
 import { configureMetricsCache, familyVerticalMetrics } from '@genoffice/font-metrics'
 import { createI18n, getUiLang, normalizeLang, setUiLang } from '@genoffice/i18n'
+import {
+  aiRuntimeInstalled,
+  aiUnavailableTextOf,
+  lockedAiSettings,
+  resolveInferenceSettings,
+} from './ai-runtime'
 import { ProjectStore } from '@genoffice/project-store'
 import type {
   IpcMainInvokeEvent,
@@ -218,7 +224,7 @@ const tMain = createI18n({
     filterWord: 'Word 文档',
     odtImportMsg: '转换 .{ext} 文档？',
     odtImportDetail:
-      'GenOffice 只编辑 .docx，不编辑 ODF。正文、标题、列表、表格和图片会转换过来；脚注、批注和文本框不会完整保留。原文件不会被修改，转换出的 .docx 是一份独立副本，之后的保存都写入它。', // public-hygiene: allow
+      'CMLG Office 只编辑 .docx，不编辑 ODF。正文、标题、列表、表格和图片会转换过来；脚注、批注和文本框不会完整保留。原文件不会被修改，转换出的 .docx 是一份独立副本，之后的保存都写入它。', // public-hygiene: allow
     odtImportConvertBtn: '转换并打开',
     dlgSaveAs: '另存为',
     closeUnsavedMsg: '此文档有未保存的更改。',
@@ -261,6 +267,11 @@ const tMain = createI18n({
     errAiRegion: '该模型的厂商不向当前地区提供服务，请换一个模型或切换网络',
     errAiBusy: 'AI 服务当前繁忙，请稍后重试',
     errNoModel: '未配置模型名称',
+    errPlatformNoModel:
+      '数字员工平台尚未同步到可用模型，暂时无法使用 AI 功能。请到数字员工平台配置模型后重试。',
+    errPlatformNoKey:
+      '数字员工平台尚未下发 API Key，暂时无法使用 AI 功能。请在数字员工平台申请或启用 API Key 后重试。',
+    errPlatformSignedOut: '请先登录数字员工平台：AI 推理使用平台下发的模型与凭据。',
     menuFile: '文件',
     menuNewDoc: '新建文档',
     menuNewWindow: '新建窗口',
@@ -358,7 +369,7 @@ const tMain = createI18n({
     filterWord: 'Word Documents',
     odtImportMsg: 'Convert this .{ext} document?',
     odtImportDetail:
-      'GenOffice edits .docx, not ODF. Body text, headings, lists, tables and images carry over; footnotes, comments and text boxes are not fully preserved. The original file is never changed; the converted .docx is a separate copy that later saves write to.',
+      'CMLG Office edits .docx, not ODF. Body text, headings, lists, tables and images carry over; footnotes, comments and text boxes are not fully preserved. The original file is never changed; the converted .docx is a separate copy that later saves write to.',
     odtImportConvertBtn: 'Convert and open',
     dlgSaveAs: 'Save As',
     closeUnsavedMsg: 'This document has unsaved changes.',
@@ -405,6 +416,12 @@ const tMain = createI18n({
       "This model's provider does not serve your current region — pick another model or change your network",
     errAiBusy: 'The AI service is busy right now — please try again in a moment',
     errNoModel: 'No model name configured',
+    errPlatformNoModel:
+      'No model has been synced from the Digital Employee Platform yet, so AI features are unavailable. Configure a model on the platform and try again.',
+    errPlatformNoKey:
+      'The Digital Employee Platform has not issued an API key yet, so AI features are unavailable. Apply for or enable an API key on the platform and try again.',
+    errPlatformSignedOut:
+      'Sign in to the Digital Employee Platform first: AI inference uses the models and credentials it issues.',
     menuFile: 'File',
     menuNewDoc: 'New Document',
     menuNewWindow: 'New Window',
@@ -502,7 +519,7 @@ const tMain = createI18n({
     filterWord: 'Tài liệu Word',
     odtImportMsg: 'Chuyển đổi tài liệu .{ext} này?',
     odtImportDetail:
-      'GenOffice chỉnh sửa .docx chứ không chỉnh sửa ODF. Nội dung, tiêu đề, danh sách, bảng và hình ảnh được chuyển đổi; chú thích cuối trang, bình luận và hộp văn bản không được giữ đầy đủ. Tệp gốc không bao giờ bị sửa; bản .docx sau chuyển đổi là một bản sao độc lập để tiếp tục chỉnh sửa và lưu.',
+      'CMLG Office chỉnh sửa .docx chứ không chỉnh sửa ODF. Nội dung, tiêu đề, danh sách, bảng và hình ảnh được chuyển đổi; chú thích cuối trang, bình luận và hộp văn bản không được giữ đầy đủ. Tệp gốc không bao giờ bị sửa; bản .docx sau chuyển đổi là một bản sao độc lập để tiếp tục chỉnh sửa và lưu.',
     odtImportConvertBtn: 'Chuyển đổi và mở',
     dlgSaveAs: 'Lưu dưới dạng',
     closeUnsavedMsg: 'Tài liệu này có những thay đổi chưa được lưu.',
@@ -550,6 +567,12 @@ const tMain = createI18n({
       'Nhà cung cấp của mô hình này không phục vụ khu vực hiện tại của bạn — hãy chọn mô hình khác hoặc đổi mạng',
     errAiBusy: 'Dịch vụ AI hiện đang bận — vui lòng thử lại sau giây lát',
     errNoModel: 'Chưa cấu hình tên mô hình',
+    errPlatformNoModel:
+      'Nền tảng Nhân viên số chưa đồng bộ mô hình nào nên không thể dùng các tính năng AI. Hãy cấu hình mô hình trên nền tảng rồi thử lại.',
+    errPlatformNoKey:
+      'Nền tảng Nhân viên số chưa cấp khóa API nên không thể dùng các tính năng AI. Hãy đăng ký hoặc bật khóa API trên nền tảng rồi thử lại.',
+    errPlatformSignedOut:
+      'Hãy đăng nhập Nền tảng Nhân viên số trước: suy luận AI dùng mô hình và thông tin xác thực do nền tảng cấp.',
     menuFile: 'Tệp',
     menuNewDoc: 'Tài liệu mới',
     menuNewWindow: 'Cửa sổ mới',
@@ -647,7 +670,7 @@ const tMain = createI18n({
     filterWord: 'Word Belgeleri',
     odtImportMsg: 'Bu .{ext} belgesi dönüştürülsün mü?',
     odtImportDetail:
-      'GenOffice ODF değil .docx düzenler. Gövde metni, başlıklar, listeler, tablolar ve resimler aktarılır; dipnotlar, açıklamalar ve metin kutuları tam olarak korunmaz. Özgün dosya hiçbir zaman değiştirilmez; dönüştürülen .docx, sonraki kaydetmelerin yazıldığı ayrı bir kopyadır.',
+      'CMLG Office ODF değil .docx düzenler. Gövde metni, başlıklar, listeler, tablolar ve resimler aktarılır; dipnotlar, açıklamalar ve metin kutuları tam olarak korunmaz. Özgün dosya hiçbir zaman değiştirilmez; dönüştürülen .docx, sonraki kaydetmelerin yazıldığı ayrı bir kopyadır.',
     odtImportConvertBtn: 'Dönüştür ve aç',
     dlgSaveAs: 'Farklı Kaydet',
     closeUnsavedMsg: 'Bu belgede kaydedilmemiş değişiklikler var.',
@@ -694,6 +717,12 @@ const tMain = createI18n({
       'Bu modelin sağlayıcısı bulunduğunuz bölgeye hizmet vermiyor — başka bir model seçin veya ağınızı değiştirin',
     errAiBusy: 'AI hizmeti şu anda yoğun — lütfen biraz sonra yeniden deneyin',
     errNoModel: 'Model adı yapılandırılmamış',
+    errPlatformNoModel:
+      'Dijital Çalışan Platformundan henüz bir model eşitlenmediği için yapay zekâ özellikleri kullanılamıyor. Platformda bir model yapılandırıp yeniden deneyin.',
+    errPlatformNoKey:
+      'Dijital Çalışan Platformu henüz bir API anahtarı vermediği için yapay zekâ özellikleri kullanılamıyor. Platformda API anahtarı talep edip etkinleştirdikten sonra yeniden deneyin.',
+    errPlatformSignedOut:
+      'Önce Dijital Çalışan Platformuna giriş yapın: yapay zekâ çıkarımı platformun verdiği modelleri ve kimlik bilgilerini kullanır.',
     menuFile: 'Dosya',
     menuNewDoc: 'Yeni Belge',
     menuNewWindow: 'Yeni Pencere',
@@ -791,7 +820,7 @@ const tMain = createI18n({
     filterWord: 'Word 文書',
     odtImportMsg: 'この .{ext} 文書を変換しますか？',
     odtImportDetail:
-      'GenOffice は ODF ではなく .docx を編集します。本文・見出し・リスト・表・画像は変換されますが、脚注・コメント・テキストボックスは完全には保持されません。元のファイルは変更されず、変換後の .docx は独立したコピーとして以後の保存先になります。',
+      'CMLG Office は ODF ではなく .docx を編集します。本文・見出し・リスト・表・画像は変換されますが、脚注・コメント・テキストボックスは完全には保持されません。元のファイルは変更されず、変換後の .docx は独立したコピーとして以後の保存先になります。',
     odtImportConvertBtn: '変換して開く',
     dlgSaveAs: '名前を付けて保存',
     closeUnsavedMsg: 'このドキュメントに未保存の変更があります。',
@@ -838,6 +867,12 @@ const tMain = createI18n({
       'このモデルの提供元は現在の地域ではサービスを提供していません。別のモデルを選ぶか、ネットワークを切り替えてください',
     errAiBusy: 'AI サービスが混み合っています。しばらくしてからもう一度お試しください',
     errNoModel: 'モデル名が設定されていません',
+    errPlatformNoModel:
+      'デジタル従業員プラットフォームからモデルがまだ同期されていないため、AI 機能を利用できません。プラットフォームでモデルを設定してから再試行してください。',
+    errPlatformNoKey:
+      'デジタル従業員プラットフォームから API キーが発行されていないため、AI 機能を利用できません。プラットフォームで API キーを申請または有効化してから再試行してください。',
+    errPlatformSignedOut:
+      '先にデジタル従業員プラットフォームへサインインしてください。AI 推論はプラットフォームが発行するモデルと認証情報を使用します。',
     menuFile: 'ファイル',
     menuNewDoc: '新規文書',
     menuNewWindow: '新規ウィンドウ',
@@ -935,7 +970,7 @@ const tMain = createI18n({
     filterWord: 'Word 문서',
     odtImportMsg: '이 .{ext} 문서를 변환할까요?',
     odtImportDetail:
-      'GenOffice은 ODF가 아니라 .docx를 편집합니다. 본문, 제목, 목록, 표, 이미지는 변환되지만 각주, 메모, 텍스트 상자는 완전히 유지되지 않습니다. 원본 파일은 변경되지 않으며, 변환된 .docx는 이후 저장이 기록되는 독립적인 사본입니다.',
+      'CMLG Office은 ODF가 아니라 .docx를 편집합니다. 본문, 제목, 목록, 표, 이미지는 변환되지만 각주, 메모, 텍스트 상자는 완전히 유지되지 않습니다. 원본 파일은 변경되지 않으며, 변환된 .docx는 이후 저장이 기록되는 독립적인 사본입니다.',
     odtImportConvertBtn: '변환 후 열기',
     dlgSaveAs: '다른 이름으로 저장',
     closeUnsavedMsg: '이 문서에 저장하지 않은 변경 사항이 있습니다.',
@@ -983,6 +1018,12 @@ const tMain = createI18n({
       '이 모델의 제공업체는 현재 지역에서 서비스를 제공하지 않습니다. 다른 모델을 선택하거나 네트워크를 변경하세요',
     errAiBusy: 'AI 서비스가 혼잡합니다. 잠시 후 다시 시도해 주세요',
     errNoModel: '모델 이름이 설정되지 않았습니다',
+    errPlatformNoModel:
+      '디지털 직원 플랫폼에서 아직 모델을 동기화하지 않아 AI 기능을 사용할 수 없습니다. 플랫폼에서 모델을 구성한 뒤 다시 시도하세요.',
+    errPlatformNoKey:
+      '디지털 직원 플랫폼에서 API 키를 발급하지 않아 AI 기능을 사용할 수 없습니다. 플랫폼에서 API 키를 신청하거나 활성화한 뒤 다시 시도하세요.',
+    errPlatformSignedOut:
+      '먼저 디지털 직원 플랫폼에 로그인하세요. AI 추론은 플랫폼이 발급한 모델과 자격 증명을 사용합니다.',
     menuFile: '파일',
     menuNewDoc: '새 문서',
     menuNewWindow: '새 창',
@@ -1080,7 +1121,7 @@ const tMain = createI18n({
     filterWord: 'Documents Word',
     odtImportMsg: 'Convertir ce document .{ext} ?',
     odtImportDetail:
-      'GenOffice modifie des .docx, pas de l’ODF. Le texte, les titres, les listes, les tableaux et les images sont convertis ; les notes de bas de page, les commentaires et les zones de texte ne sont pas entièrement conservés. Le fichier d’origine n’est jamais modifié ; le .docx converti est une copie distincte où s’effectuent les enregistrements suivants.',
+      'CMLG Office modifie des .docx, pas de l’ODF. Le texte, les titres, les listes, les tableaux et les images sont convertis ; les notes de bas de page, les commentaires et les zones de texte ne sont pas entièrement conservés. Le fichier d’origine n’est jamais modifié ; le .docx converti est une copie distincte où s’effectuent les enregistrements suivants.',
     odtImportConvertBtn: 'Convertir et ouvrir',
     dlgSaveAs: 'Enregistrer sous',
     closeUnsavedMsg: 'Ce document contient des modifications non enregistrées.',
@@ -1129,6 +1170,12 @@ const tMain = createI18n({
       'Le fournisseur de ce modèle ne dessert pas votre région actuelle — choisissez un autre modèle ou changez de réseau',
     errAiBusy: "Le service d'IA est actuellement surchargé — réessayez dans un instant",
     errNoModel: 'Aucun nom de modèle configuré',
+    errPlatformNoModel:
+      "Aucun modèle n'a encore été synchronisé depuis la plateforme Employé numérique : les fonctions IA sont indisponibles. Configurez un modèle sur la plateforme puis réessayez.",
+    errPlatformNoKey:
+      "La plateforme Employé numérique n'a pas encore émis de clé API : les fonctions IA sont indisponibles. Demandez ou activez une clé API sur la plateforme puis réessayez.",
+    errPlatformSignedOut:
+      "Connectez-vous d'abord à la plateforme Employé numérique : l'inférence IA utilise les modèles et identifiants qu'elle émet.",
     menuFile: 'Fichier',
     menuNewDoc: 'Nouveau document',
     menuNewWindow: 'Nouvelle fenêtre',
@@ -1226,7 +1273,7 @@ const tMain = createI18n({
     filterWord: 'Word-Dokumente',
     odtImportMsg: 'Dieses .{ext}-Dokument konvertieren?',
     odtImportDetail:
-      'GenOffice bearbeitet .docx, nicht ODF. Text, Überschriften, Listen, Tabellen und Bilder werden übernommen; Fußnoten, Kommentare und Textfelder werden nicht vollständig bewahrt. Die Originaldatei bleibt unverändert; die konvertierte .docx-Kopie ist eigenständig, und spätere Speicherungen landen in ihr.',
+      'CMLG Office bearbeitet .docx, nicht ODF. Text, Überschriften, Listen, Tabellen und Bilder werden übernommen; Fußnoten, Kommentare und Textfelder werden nicht vollständig bewahrt. Die Originaldatei bleibt unverändert; die konvertierte .docx-Kopie ist eigenständig, und spätere Speicherungen landen in ihr.',
     odtImportConvertBtn: 'Konvertieren und öffnen',
     dlgSaveAs: 'Speichern unter',
     closeUnsavedMsg: 'Dieses Dokument enthält ungespeicherte Änderungen.',
@@ -1275,6 +1322,12 @@ const tMain = createI18n({
       'Der Anbieter dieses Modells bedient Ihre aktuelle Region nicht — wählen Sie ein anderes Modell oder wechseln Sie das Netzwerk',
     errAiBusy: 'Der KI-Dienst ist derzeit überlastet — bitte gleich erneut versuchen',
     errNoModel: 'Kein Modellname konfiguriert',
+    errPlatformNoModel:
+      'Von der Plattform „Digitaler Mitarbeiter“ wurde noch kein Modell synchronisiert, daher sind KI-Funktionen nicht verfügbar. Konfigurieren Sie ein Modell auf der Plattform und versuchen Sie es erneut.',
+    errPlatformNoKey:
+      'Die Plattform „Digitaler Mitarbeiter“ hat noch keinen API-Schlüssel ausgestellt, daher sind KI-Funktionen nicht verfügbar. Beantragen oder aktivieren Sie einen API-Schlüssel auf der Plattform und versuchen Sie es erneut.',
+    errPlatformSignedOut:
+      'Melden Sie sich zuerst bei der Plattform „Digitaler Mitarbeiter“ an: Die KI-Inferenz nutzt die dort ausgegebenen Modelle und Zugangsdaten.',
     menuFile: 'Datei',
     menuNewDoc: 'Neues Dokument',
     menuNewWindow: 'Neues Fenster',
@@ -1372,7 +1425,7 @@ const tMain = createI18n({
     filterWord: 'Documentos de Word',
     odtImportMsg: '¿Convertir este documento .{ext}?',
     odtImportDetail:
-      'GenOffice edita .docx, no ODF. El texto, los títulos, las listas, las tablas y las imágenes se convierten; las notas al pie, los comentarios y los cuadros de texto no se conservan por completo. El archivo original nunca se modifica; el .docx convertido es una copia independiente en la que se guardan los cambios posteriores.',
+      'CMLG Office edita .docx, no ODF. El texto, los títulos, las listas, las tablas y las imágenes se convierten; las notas al pie, los comentarios y los cuadros de texto no se conservan por completo. El archivo original nunca se modifica; el .docx convertido es una copia independiente en la que se guardan los cambios posteriores.',
     odtImportConvertBtn: 'Convertir y abrir',
     dlgSaveAs: 'Guardar como',
     closeUnsavedMsg: 'Este documento tiene cambios sin guardar.',
@@ -1421,6 +1474,12 @@ const tMain = createI18n({
     errAiBusy:
       'El servicio de IA está saturado en este momento; inténtalo de nuevo en unos instantes',
     errNoModel: 'No se ha configurado el nombre del modelo',
+    errPlatformNoModel:
+      'La plataforma de Empleado Digital aún no ha sincronizado ningún modelo, así que las funciones de IA no están disponibles. Configure un modelo en la plataforma e inténtelo de nuevo.',
+    errPlatformNoKey:
+      'La plataforma de Empleado Digital aún no ha emitido ninguna clave de API, así que las funciones de IA no están disponibles. Solicite o active una clave de API en la plataforma e inténtelo de nuevo.',
+    errPlatformSignedOut:
+      'Inicie sesión primero en la plataforma de Empleado Digital: la inferencia de IA usa los modelos y credenciales que esta emite.',
     menuFile: 'Archivo',
     menuNewDoc: 'Nuevo documento',
     menuNewWindow: 'Nueva ventana',
@@ -1518,7 +1577,7 @@ const tMain = createI18n({
     filterWord: 'เอกสาร Word',
     odtImportMsg: 'แปลงเอกสาร .{ext} นี้ไหม?',
     odtImportDetail:
-      'GenOffice แก้ไข .docx ไม่ใช่ ODF ข้อความ หัวข้อ รายการ ตาราง และรูปภาพจะถูกแปลง ส่วนเชิงอรรถ ความคิดเห็น และกล่องข้อความจะไม่ถูกเก็บไว้ทั้งหมด ไฟล์ต้นทางจะไม่ถูกแก้ไข และไฟล์ .docx ที่แปลงแล้วเป็นสำเนาแยกต่างหากที่การบันทึกครั้งต่อไปจะเขียนลง',
+      'CMLG Office แก้ไข .docx ไม่ใช่ ODF ข้อความ หัวข้อ รายการ ตาราง และรูปภาพจะถูกแปลง ส่วนเชิงอรรถ ความคิดเห็น และกล่องข้อความจะไม่ถูกเก็บไว้ทั้งหมด ไฟล์ต้นทางจะไม่ถูกแก้ไข และไฟล์ .docx ที่แปลงแล้วเป็นสำเนาแยกต่างหากที่การบันทึกครั้งต่อไปจะเขียนลง',
     odtImportConvertBtn: 'แปลงแล้วเปิด',
     dlgSaveAs: 'บันทึกเป็น',
     closeUnsavedMsg: 'เอกสารนี้มีการเปลี่ยนแปลงที่ยังไม่ได้บันทึก',
@@ -1565,6 +1624,12 @@ const tMain = createI18n({
       'ผู้ให้บริการของโมเดลนี้ไม่ให้บริการในภูมิภาคปัจจุบันของคุณ — โปรดเลือกโมเดลอื่นหรือเปลี่ยนเครือข่าย',
     errAiBusy: 'บริการ AI มีผู้ใช้งานจำนวนมากในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่',
     errNoModel: 'ยังไม่ได้ตั้งค่าชื่อโมเดล',
+    errPlatformNoModel:
+      'แพลตฟอร์มพนักงานดิจิทัลยังไม่ได้ซิงค์โมเดล จึงยังใช้ฟีเจอร์ AI ไม่ได้ กรุณาตั้งค่าโมเดลบนแพลตฟอร์มแล้วลองอีกครั้ง',
+    errPlatformNoKey:
+      'แพลตฟอร์มพนักงานดิจิทัลยังไม่ได้ออกคีย์ API จึงยังใช้ฟีเจอร์ AI ไม่ได้ กรุณาขอหรือเปิดใช้งานคีย์ API บนแพลตฟอร์มแล้วลองอีกครั้ง',
+    errPlatformSignedOut:
+      'กรุณาเข้าสู่ระบบแพลตฟอร์มพนักงานดิจิทัลก่อน การอนุมาน AI ใช้โมเดลและข้อมูลรับรองที่แพลตฟอร์มออกให้',
     menuFile: 'ไฟล์',
     menuNewDoc: 'เอกสารใหม่',
     menuNewWindow: 'หน้าต่างใหม่',
@@ -1662,7 +1727,7 @@ const tMain = createI18n({
     filterWord: 'Dokumen Word',
     odtImportMsg: 'Konversi dokumen .{ext} ini?',
     odtImportDetail:
-      'GenOffice mengedit .docx, bukan ODF. Teks isi, judul, daftar, tabel, dan gambar ikut dikonversi; catatan kaki, komentar, dan kotak teks tidak sepenuhnya dipertahankan. File asli tidak pernah diubah; salinan .docx hasil konversi berdiri sendiri dan penyimpanan berikutnya ditulis ke sana.',
+      'CMLG Office mengedit .docx, bukan ODF. Teks isi, judul, daftar, tabel, dan gambar ikut dikonversi; catatan kaki, komentar, dan kotak teks tidak sepenuhnya dipertahankan. File asli tidak pernah diubah; salinan .docx hasil konversi berdiri sendiri dan penyimpanan berikutnya ditulis ke sana.',
     odtImportConvertBtn: 'Konversi dan buka',
     dlgSaveAs: 'Simpan Sebagai',
     closeUnsavedMsg: 'Dokumen ini memiliki perubahan yang belum disimpan.',
@@ -1709,6 +1774,12 @@ const tMain = createI18n({
       'Penyedia model ini tidak melayani wilayah Anda saat ini — pilih model lain atau ganti jaringan',
     errAiBusy: 'Layanan AI sedang sibuk — silakan coba lagi sebentar lagi',
     errNoModel: 'Nama model belum dikonfigurasi',
+    errPlatformNoModel:
+      'Platform Karyawan Digital belum menyinkronkan model apa pun, sehingga fitur AI belum tersedia. Konfigurasikan model di platform lalu coba lagi.',
+    errPlatformNoKey:
+      'Platform Karyawan Digital belum menerbitkan kunci API, sehingga fitur AI belum tersedia. Ajukan atau aktifkan kunci API di platform lalu coba lagi.',
+    errPlatformSignedOut:
+      'Masuk ke Platform Karyawan Digital terlebih dahulu: inferensi AI memakai model dan kredensial yang diterbitkan platform.',
     menuFile: 'File',
     menuNewDoc: 'Dokumen Baru',
     menuNewWindow: 'Jendela Baru',
@@ -1806,7 +1877,7 @@ const tMain = createI18n({
     filterWord: 'Документы Word',
     odtImportMsg: 'Преобразовать этот документ .{ext}?',
     odtImportDetail:
-      'GenOffice редактирует .docx, а не ODF. Текст, заголовки, списки, таблицы и изображения переносятся; сноски, примечания и надписи сохраняются не полностью. Исходный файл никогда не изменяется; преобразованный .docx — отдельная копия, в которую записывается дальнейшее сохранение.',
+      'CMLG Office редактирует .docx, а не ODF. Текст, заголовки, списки, таблицы и изображения переносятся; сноски, примечания и надписи сохраняются не полностью. Исходный файл никогда не изменяется; преобразованный .docx — отдельная копия, в которую записывается дальнейшее сохранение.',
     odtImportConvertBtn: 'Преобразовать и открыть',
     dlgSaveAs: 'Сохранить как',
     closeUnsavedMsg: 'В этом документе есть несохранённые изменения.',
@@ -1854,6 +1925,12 @@ const tMain = createI18n({
       'Поставщик этой модели не обслуживает ваш текущий регион — выберите другую модель или смените сеть',
     errAiBusy: 'Сервис ИИ сейчас перегружен — повторите попытку чуть позже',
     errNoModel: 'Не указано имя модели',
+    errPlatformNoModel:
+      'С платформы «Цифровой сотрудник» ещё не синхронизирована ни одна модель, поэтому функции ИИ недоступны. Настройте модель на платформе и повторите попытку.',
+    errPlatformNoKey:
+      'Платформа «Цифровой сотрудник» ещё не выдала ключ API, поэтому функции ИИ недоступны. Запросите или включите ключ API на платформе и повторите попытку.',
+    errPlatformSignedOut:
+      'Сначала войдите на платформу «Цифровой сотрудник»: ИИ-инференс использует модели и учётные данные, которые она выдаёт.',
     menuFile: 'Файл',
     menuNewDoc: 'Создать документ',
     menuNewWindow: 'Новое окно',
@@ -1951,7 +2028,7 @@ const tMain = createI18n({
     filterWord: 'مستندات Word',
     odtImportMsg: 'تحويل مستند .{ext} هذا؟',
     odtImportDetail:
-      'يحرّر GenOffice ملفات ‎.docx ولا يحرّر ODF. يُحوَّل النص والعناوين والقوائم والجداول والصور؛ أما الحواشي السفلية والتعليقات ومربعات النص فلا تُحفظ بالكامل. لا يتغيّر الملف الأصلي أبدًا؛ والملف ‎.docx المحوَّل نسخة مستقلة تُكتب فيها عمليات الحفظ اللاحقة.',
+      'يحرّر CMLG Office ملفات ‎.docx ولا يحرّر ODF. يُحوَّل النص والعناوين والقوائم والجداول والصور؛ أما الحواشي السفلية والتعليقات ومربعات النص فلا تُحفظ بالكامل. لا يتغيّر الملف الأصلي أبدًا؛ والملف ‎.docx المحوَّل نسخة مستقلة تُكتب فيها عمليات الحفظ اللاحقة.',
     odtImportConvertBtn: 'تحويل وفتح',
     dlgSaveAs: 'حفظ باسم',
     closeUnsavedMsg: 'يحتوي هذا المستند على تغييرات غير محفوظة.',
@@ -1999,6 +2076,12 @@ const tMain = createI18n({
       'مزوّد هذا النموذج لا يقدم الخدمة في منطقتك الحالية — اختر نموذجًا آخر أو غيّر الشبكة',
     errAiBusy: 'خدمة الذكاء الاصطناعي مشغولة حاليًا — يرجى المحاولة مرة أخرى بعد قليل',
     errNoModel: 'لم يتم تكوين اسم النموذج',
+    errPlatformNoModel:
+      'لم تتم مزامنة أي نموذج من منصة الموظف الرقمي بعد، لذلك لا تتوفر ميزات الذكاء الاصطناعي. قم بتهيئة نموذج على المنصة ثم أعد المحاولة.',
+    errPlatformNoKey:
+      'لم تصدر منصة الموظف الرقمي مفتاح API بعد، لذلك لا تتوفر ميزات الذكاء الاصطناعي. اطلب مفتاح API أو فعّله على المنصة ثم أعد المحاولة.',
+    errPlatformSignedOut:
+      'سجّل الدخول إلى منصة الموظف الرقمي أولاً: يعتمد استدلال الذكاء الاصطناعي على النماذج وبيانات الاعتماد التي تصدرها المنصة.',
     menuFile: 'ملف',
     menuNewDoc: 'مستند جديد',
     menuNewWindow: 'نافذة جديدة',
@@ -2096,7 +2179,7 @@ const tMain = createI18n({
     filterWord: 'Documentos do Word',
     odtImportMsg: 'Converter este documento .{ext}?',
     odtImportDetail:
-      'O GenOffice edita .docx, não ODF. Texto, títulos, listas, tabelas e imagens são convertidos; notas de rodapé, comentários e caixas de texto não são preservados por completo. O arquivo original nunca é alterado; o .docx convertido é uma cópia independente em que os salvamentos seguintes são gravados.',
+      'O CMLG Office edita .docx, não ODF. Texto, títulos, listas, tabelas e imagens são convertidos; notas de rodapé, comentários e caixas de texto não são preservados por completo. O arquivo original nunca é alterado; o .docx convertido é uma cópia independente em que os salvamentos seguintes são gravados.',
     odtImportConvertBtn: 'Converter e abrir',
     dlgSaveAs: 'Salvar Como',
     closeUnsavedMsg: 'Este documento tem alterações não salvas.',
@@ -2144,6 +2227,12 @@ const tMain = createI18n({
       'O fornecedor deste modelo não atende à sua região atual — escolha outro modelo ou mude de rede',
     errAiBusy: 'O serviço de IA está sobrecarregado no momento — tente novamente em instantes',
     errNoModel: 'Nenhum nome de modelo configurado',
+    errPlatformNoModel:
+      'A plataforma de Funcionário Digital ainda não sincronizou nenhum modelo, então os recursos de IA não estão disponíveis. Configure um modelo na plataforma e tente novamente.',
+    errPlatformNoKey:
+      'A plataforma de Funcionário Digital ainda não emitiu uma chave de API, então os recursos de IA não estão disponíveis. Solicite ou ative uma chave de API na plataforma e tente novamente.',
+    errPlatformSignedOut:
+      'Entre primeiro na plataforma de Funcionário Digital: a inferência de IA usa os modelos e credenciais que ela emite.',
     menuFile: 'Arquivo',
     menuNewDoc: 'Novo Documento',
     menuNewWindow: 'Nova Janela',
@@ -2241,7 +2330,7 @@ const tMain = createI18n({
     filterWord: 'Documenti Word',
     odtImportMsg: 'Convertire questo documento .{ext}?',
     odtImportDetail:
-      'GenOffice modifica .docx, non ODF. Testo, titoli, elenchi, tabelle e immagini vengono convertiti; note a piè di pagina, commenti e caselle di testo non sono conservati completamente. Il file originale non viene mai modificato; il .docx convertito è una copia indipendente su cui vengono salvate le modifiche successive.',
+      'CMLG Office modifica .docx, non ODF. Testo, titoli, elenchi, tabelle e immagini vengono convertiti; note a piè di pagina, commenti e caselle di testo non sono conservati completamente. Il file originale non viene mai modificato; il .docx convertito è una copia indipendente su cui vengono salvate le modifiche successive.',
     odtImportConvertBtn: 'Converti e apri',
     dlgSaveAs: 'Salva con nome',
     closeUnsavedMsg: 'Questo documento contiene modifiche non salvate.',
@@ -2289,6 +2378,12 @@ const tMain = createI18n({
       'Il fornitore di questo modello non serve la tua regione attuale — scegli un altro modello o cambia rete',
     errAiBusy: 'Il servizio IA è momentaneamente sovraccarico — riprova tra poco',
     errNoModel: 'Nessun nome di modello configurato',
+    errPlatformNoModel:
+      'La piattaforma Dipendente Digitale non ha ancora sincronizzato alcun modello, quindi le funzioni IA non sono disponibili. Configura un modello sulla piattaforma e riprova.',
+    errPlatformNoKey:
+      'La piattaforma Dipendente Digitale non ha ancora emesso una chiave API, quindi le funzioni IA non sono disponibili. Richiedi o attiva una chiave API sulla piattaforma e riprova.',
+    errPlatformSignedOut:
+      "Accedi prima alla piattaforma Dipendente Digitale: l'inferenza IA usa i modelli e le credenziali che emette.",
     menuFile: 'File',
     menuNewDoc: 'Nuovo documento',
     menuNewWindow: 'Nuova finestra',
@@ -2386,7 +2481,7 @@ const tMain = createI18n({
     filterWord: 'Dokumenty programu Word',
     odtImportMsg: 'Skonwertować ten dokument .{ext}?',
     odtImportDetail:
-      'GenOffice edytuje .docx, a nie ODF. Tekst, nagłówki, listy, tabele i obrazy są konwertowane; przypisy, komentarze i pola tekstowe nie są zachowywane w całości. Plik oryginalny nigdy nie jest zmieniany; skonwertowany .docx to niezależna kopia, do której trafiają kolejne zapisy.',
+      'CMLG Office edytuje .docx, a nie ODF. Tekst, nagłówki, listy, tabele i obrazy są konwertowane; przypisy, komentarze i pola tekstowe nie są zachowywane w całości. Plik oryginalny nigdy nie jest zmieniany; skonwertowany .docx to niezależna kopia, do której trafiają kolejne zapisy.',
     odtImportConvertBtn: 'Konwertuj i otwórz',
     dlgSaveAs: 'Zapisz jako',
     closeUnsavedMsg: 'Ten dokument zawiera niezapisane zmiany.',
@@ -2434,6 +2529,12 @@ const tMain = createI18n({
       'Dostawca tego modelu nie obsługuje Twojego obecnego regionu — wybierz inny model lub zmień sieć',
     errAiBusy: 'Usługa AI jest obecnie przeciążona — spróbuj ponownie za chwilę',
     errNoModel: 'Nie skonfigurowano nazwy modelu',
+    errPlatformNoModel:
+      'Platforma Pracownika Cyfrowego nie zsynchronizowała jeszcze żadnego modelu, więc funkcje AI są niedostępne. Skonfiguruj model na platformie i spróbuj ponownie.',
+    errPlatformNoKey:
+      'Platforma Pracownika Cyfrowego nie wydała jeszcze klucza API, więc funkcje AI są niedostępne. Złóż wniosek o klucz API lub włącz go na platformie i spróbuj ponownie.',
+    errPlatformSignedOut:
+      'Najpierw zaloguj się do platformy Pracownika Cyfrowego: wnioskowanie AI korzysta z modeli i poświadczeń wydanych przez platformę.',
     menuFile: 'Plik',
     menuNewDoc: 'Nowy dokument',
     menuNewWindow: 'Nowe okno',
@@ -2531,7 +2632,7 @@ const tMain = createI18n({
     filterWord: 'Dokumenty Wordu',
     odtImportMsg: 'Převést tento dokument .{ext}?',
     odtImportDetail:
-      'GenOffice upravuje .docx, nikoli ODF. Text, nadpisy, seznamy, tabulky a obrázky se převedou; poznámky pod čarou, komentáře a textová pole se nepřevezmou úplně. Původní soubor se nikdy nemění; převedený .docx je samostatná kopie, do níž se dalším ukládáním zapisuje.',
+      'CMLG Office upravuje .docx, nikoli ODF. Text, nadpisy, seznamy, tabulky a obrázky se převedou; poznámky pod čarou, komentáře a textová pole se nepřevezmou úplně. Původní soubor se nikdy nemění; převedený .docx je samostatná kopie, do níž se dalším ukládáním zapisuje.',
     odtImportConvertBtn: 'Převést a otevřít',
     dlgSaveAs: 'Uložit jako',
     closeUnsavedMsg: 'Tento dokument obsahuje neuložené změny.',
@@ -2579,6 +2680,12 @@ const tMain = createI18n({
       'Poskytovatel tohoto modelu neposkytuje služby ve vaší aktuální oblasti — vyberte jiný model nebo změňte síť',
     errAiBusy: 'Služba AI je právě zaneprázdněna — zkuste to prosím za chvíli znovu',
     errNoModel: 'Není nakonfigurován název modelu',
+    errPlatformNoModel:
+      'Z platformy Digitální zaměstnanec zatím nebyl synchronizován žádný model, takže funkce AI nejsou dostupné. Nakonfigurujte model na platformě a zkuste to znovu.',
+    errPlatformNoKey:
+      'Platforma Digitální zaměstnanec ještě nevydala klíč API, takže funkce AI nejsou dostupné. Požádejte o klíč API nebo jej na platformě povolte a zkuste to znovu.',
+    errPlatformSignedOut:
+      'Nejprve se přihlaste k platformě Digitální zaměstnanec: inference AI používá modely a přihlašovací údaje, které vydává.',
     menuFile: 'Soubor',
     menuNewDoc: 'Nový dokument',
     menuNewWindow: 'Nové okno',
@@ -2676,7 +2783,7 @@ const tMain = createI18n({
     filterWord: 'Word-documenten',
     odtImportMsg: 'Dit .{ext}-document converteren?',
     odtImportDetail:
-      'GenOffice bewerkt .docx, niet ODF. Tekst, koppen, lijsten, tabellen en afbeeldingen worden omgezet; voetnoten, opmerkingen en tekstvakken niet volledig. Het oorspronkelijke bestand wordt nooit gewijzigd; de omgezette .docx is een zelfstandige kopie waarin volgende opslaan-acties terechtkomen.',
+      'CMLG Office bewerkt .docx, niet ODF. Tekst, koppen, lijsten, tabellen en afbeeldingen worden omgezet; voetnoten, opmerkingen en tekstvakken niet volledig. Het oorspronkelijke bestand wordt nooit gewijzigd; de omgezette .docx is een zelfstandige kopie waarin volgende opslaan-acties terechtkomen.',
     odtImportConvertBtn: 'Converteren en openen',
     dlgSaveAs: 'Opslaan als',
     closeUnsavedMsg: 'Dit document bevat niet-opgeslagen wijzigingen.',
@@ -2724,6 +2831,12 @@ const tMain = createI18n({
       'De aanbieder van dit model bedient uw huidige regio niet — kies een ander model of wissel van netwerk',
     errAiBusy: 'De AI-service is momenteel overbelast — probeer het zo opnieuw',
     errNoModel: 'Geen modelnaam geconfigureerd',
+    errPlatformNoModel:
+      'Er is nog geen model gesynchroniseerd vanaf het platform Digitale Medewerker, dus AI-functies zijn niet beschikbaar. Configureer een model op het platform en probeer het opnieuw.',
+    errPlatformNoKey:
+      'Het platform Digitale Medewerker heeft nog geen API-sleutel uitgegeven, dus AI-functies zijn niet beschikbaar. Vraag een API-sleutel aan of activeer er een op het platform en probeer het opnieuw.',
+    errPlatformSignedOut:
+      'Meld u eerst aan bij het platform Digitale Medewerker: AI-inferentie gebruikt de modellen en inloggegevens die het uitgeeft.',
     menuFile: 'Bestand',
     menuNewDoc: 'Nieuw document',
     menuNewWindow: 'Nieuw venster',
@@ -2821,7 +2934,7 @@ const tMain = createI18n({
     filterWord: 'Dokumen Word',
     odtImportMsg: 'Tukar dokumen .{ext} ini?',
     odtImportDetail:
-      'GenOffice menyunting .docx, bukan ODF. Teks kandungan, tajuk, senarai, jadual dan imej ditukar; nota kaki, komen dan kotak teks tidak dikekalkan sepenuhnya. Fail asal tidak pernah diubah; salinan .docx yang ditukar ialah salinan berasingan tempat simpanan seterusnya ditulis.',
+      'CMLG Office menyunting .docx, bukan ODF. Teks kandungan, tajuk, senarai, jadual dan imej ditukar; nota kaki, komen dan kotak teks tidak dikekalkan sepenuhnya. Fail asal tidak pernah diubah; salinan .docx yang ditukar ialah salinan berasingan tempat simpanan seterusnya ditulis.',
     odtImportConvertBtn: 'Tukar dan buka',
     dlgSaveAs: 'Simpan Sebagai',
     closeUnsavedMsg: 'Dokumen ini mempunyai perubahan yang belum disimpan.',
@@ -2869,6 +2982,12 @@ const tMain = createI18n({
       'Penyedia model ini tidak memberi perkhidmatan di rantau semasa anda — pilih model lain atau tukar rangkaian',
     errAiBusy: 'Perkhidmatan AI sedang sibuk — sila cuba lagi sebentar lagi',
     errNoModel: 'Nama model belum dikonfigurasikan',
+    errPlatformNoModel:
+      'Platform Pekerja Digital belum menyegerakkan sebarang model, jadi ciri AI belum tersedia. Konfigurasikan model pada platform kemudian cuba lagi.',
+    errPlatformNoKey:
+      'Platform Pekerja Digital belum mengeluarkan kunci API, jadi ciri AI belum tersedia. Mohon atau aktifkan kunci API pada platform kemudian cuba lagi.',
+    errPlatformSignedOut:
+      'Log masuk ke Platform Pekerja Digital dahulu: inferens AI menggunakan model dan kelayakan yang dikeluarkan platform.',
     menuFile: 'Fail',
     menuNewDoc: 'Dokumen Baharu',
     menuNewWindow: 'Tetingkap Baharu',
@@ -2966,7 +3085,7 @@ const tMain = createI18n({
     filterWord: 'מסמכי Word',
     odtImportMsg: 'להמיר את מסמך ה‑.{ext} הזה?',
     odtImportDetail:
-      'GenOffice עורך קבצי ‎.docx ולא ODF. טקסט, כותרות, רשימות, טבלאות ותמונות מומרים; הערות שוליים, תגובות ותיבות טקסט לא נשמרים במלואם. קובץ המקור לעולם אינו משתנה; קובץ ה‑.docx שהומר הוא עותק נפרד שאליו נכתבות השמירות הבאות.',
+      'CMLG Office עורך קבצי ‎.docx ולא ODF. טקסט, כותרות, רשימות, טבלאות ותמונות מומרים; הערות שוליים, תגובות ותיבות טקסט לא נשמרים במלואם. קובץ המקור לעולם אינו משתנה; קובץ ה‑.docx שהומר הוא עותק נפרד שאליו נכתבות השמירות הבאות.',
     odtImportConvertBtn: 'המר ופתח',
     dlgSaveAs: 'שמירה בשם',
     closeUnsavedMsg: 'במסמך זה יש שינויים שלא נשמרו.',
@@ -3011,6 +3130,12 @@ const tMain = createI18n({
     errAiRegion: 'ספק המודל הזה אינו פועל באזור הנוכחי שלך — בחרו מודל אחר או החליפו רשת',
     errAiBusy: 'שירות ה-AI עמוס כרגע — נסו שוב בעוד רגע',
     errNoModel: 'לא הוגדר שם מודל',
+    errPlatformNoModel:
+      'לא סונכרן עדיין מודל מפלטפורמת העובד הדיגיטלי, ולכן תכונות הבינה המלאכותית אינן זמינות. הגדר מודל בפלטפורמה ונסה שוב.',
+    errPlatformNoKey:
+      'הפלטפורמה לא הנפיקה עדיין מפתח API, ולכן תכונות הבינה המלאכותית אינן זמינות. בקש או הפעל מפתח API בפלטפורמה ונסה שוב.',
+    errPlatformSignedOut:
+      'יש להתחבר תחילה לפלטפורמת העובד הדיגיטלי: הסקת הבינה המלאכותית משתמשת במודלים ובפרטי ההזדהות שהיא מנפיקה.',
     menuFile: 'קובץ',
     menuNewDoc: 'מסמך חדש',
     menuNewWindow: 'חלון חדש',
@@ -3108,7 +3233,7 @@ const tMain = createI18n({
     filterWord: 'Word दस्तावेज़',
     odtImportMsg: 'इस .{ext} दस्तावेज़ को बदलें?',
     odtImportDetail:
-      'GenOffice .docx संपादित करता है, ODF नहीं। मुख्य पाठ, शीर्षक, सूचियाँ, तालिकाएँ और चित्र बदल दिए जाते हैं; फुटनोट, टिप्पणियाँ और टेक्स्ट बॉक्स पूरी तरह नहीं रखे जाते। मूल फ़ाइल कभी नहीं बदलती; बदली हुई .docx एक स्वतंत्र प्रति है जिसमें आगे के सेव लिखे जाते हैं।',
+      'CMLG Office .docx संपादित करता है, ODF नहीं। मुख्य पाठ, शीर्षक, सूचियाँ, तालिकाएँ और चित्र बदल दिए जाते हैं; फुटनोट, टिप्पणियाँ और टेक्स्ट बॉक्स पूरी तरह नहीं रखे जाते। मूल फ़ाइल कभी नहीं बदलती; बदली हुई .docx एक स्वतंत्र प्रति है जिसमें आगे के सेव लिखे जाते हैं।',
     odtImportConvertBtn: 'बदलकर खोलें',
     dlgSaveAs: 'इस रूप में सहेजें',
     closeUnsavedMsg: 'इस दस्तावेज़ में सहेजे नहीं गए परिवर्तन हैं।',
@@ -3156,6 +3281,12 @@ const tMain = createI18n({
       'इस मॉडल का प्रदाता आपके वर्तमान क्षेत्र में सेवा नहीं देता — कोई दूसरा मॉडल चुनें या नेटवर्क बदलें',
     errAiBusy: 'AI सेवा अभी व्यस्त है — कृपया थोड़ी देर बाद फिर से प्रयास करें',
     errNoModel: 'कोई मॉडल नाम कॉन्फ़िगर नहीं है',
+    errPlatformNoModel:
+      'डिजिटल एम्प्लॉयी प्लेटफ़ॉर्म से अभी कोई मॉडल सिंक नहीं हुआ है, इसलिए AI सुविधाएँ उपलब्ध नहीं हैं। प्लेटफ़ॉर्म पर मॉडल कॉन्फ़िगर करके फिर से प्रयास करें।',
+    errPlatformNoKey:
+      'डिजिटल एम्प्लॉयी प्लेटफ़ॉर्म ने अभी API कुंजी जारी नहीं की है, इसलिए AI सुविधाएँ उपलब्ध नहीं हैं। प्लेटफ़ॉर्म पर API कुंजी के लिए आवेदन करें या उसे सक्षम करें और फिर से प्रयास करें।',
+    errPlatformSignedOut:
+      'पहले डिजिटल एम्प्लॉयी प्लेटफ़ॉर्म में साइन इन करें: AI अनुमान प्लेटफ़ॉर्म द्वारा जारी मॉडल और क्रेडेंशियल का उपयोग करता है।',
     menuFile: 'फ़ाइल',
     menuNewDoc: 'नया दस्तावेज़',
     menuNewWindow: 'नई विंडो',
@@ -3253,7 +3384,7 @@ const tMain = createI18n({
     filterWord: 'Word 文件',
     odtImportMsg: '轉換這個 .{ext} 文件？',
     odtImportDetail:
-      'GenOffice 只編輯 .docx，不編輯 ODF。內文、標題、清單、表格與圖片會轉換過來；註腳、註解與文字方塊不會完整保留。原始檔案不會被修改，轉換後的 .docx 是獨立副本，之後的儲存都寫入它。', // public-hygiene: allow
+      'CMLG Office 只編輯 .docx，不編輯 ODF。內文、標題、清單、表格與圖片會轉換過來；註腳、註解與文字方塊不會完整保留。原始檔案不會被修改，轉換後的 .docx 是獨立副本，之後的儲存都寫入它。', // public-hygiene: allow
     odtImportConvertBtn: '轉換並開啟',
     dlgSaveAs: '另存新檔',
     closeUnsavedMsg: '此文件有未儲存的變更。',
@@ -3296,6 +3427,11 @@ const tMain = createI18n({
     errAiRegion: '該模型的廠商不向目前地區提供服務，請換一個模型或切換網路',
     errAiBusy: 'AI 服務目前繁忙，請稍後重試',
     errNoModel: '未設定模型名稱',
+    errPlatformNoModel:
+      '數位員工平台尚未同步到可用模型，暫時無法使用 AI 功能。請到數位員工平台設定模型後重試。',
+    errPlatformNoKey:
+      '數位員工平台尚未下發 API Key，暫時無法使用 AI 功能。請在數位員工平台申請或啟用 API Key 後重試。',
+    errPlatformSignedOut: '請先登入數位員工平台：AI 推理使用平台下發的模型與憑證。',
     menuFile: '檔案',
     menuNewDoc: '新增文件',
     menuNewWindow: '新增視窗',
@@ -3392,6 +3528,27 @@ const tMain = createI18n({
 const tm = (key: Parameters<typeof tMain>[1], params?: Parameters<typeof tMain>[2]) =>
   tMain(getUiLang(), key, params)
 
+/**
+ * The localized "the platform has not enabled AI for you" explanation, chosen by
+ * the reason the runtime resolver refused. Exported so a host that installs a
+ * resolver (the CMLG shell) reuses these 22 translations instead of carrying a
+ * second copy of the same message.
+ */
+export function aiUnavailableText(
+  reason: 'signed-out' | 'no-models' | 'no-key' = 'no-models',
+): string {
+  if (reason === 'signed-out') return tm('errPlatformSignedOut')
+  if (reason === 'no-key') return tm('errPlatformNoKey')
+  return tm('errPlatformNoModel')
+}
+
+/**
+ * Installs the build's inference source (see ./ai-runtime). Re-exported here so
+ * a host only has to import from the module it already imports its IPC from.
+ */
+export { setAiRuntimeResolver } from './ai-runtime'
+export type { AiRuntimeResolver } from './ai-runtime'
+
 // ---- runtime configuration (paths differ when bundled into the shell) ----
 
 interface DocsRuntimeConfig {
@@ -3487,7 +3644,7 @@ async function saveDialog(event: IpcMainInvokeEvent, options: SaveDialogOptions)
   return showSaveDialogWithMemory(dialog, dialogParent(event), options, defaultSaveDir())
 }
 
-/** default folder where new files land on their first (silent) save; shared with the other editors via shell. User-configurable (app-settings.json), falls back to <Documents>/GenOffice. */
+/** default folder where new files land on their first (silent) save; shared with the other editors via shell. User-configurable (app-settings.json), falls back to <Documents>/CMLGOffice. */
 export function defaultSaveDir(): string {
   return configuredDefaultSaveDir(app)
 }
@@ -4270,7 +4427,16 @@ export function registerAiIpc(): void {
     const settings = resolveAiSettings(stored, defaultAiSettings())
     // a stored BYOK provider is honored when usable; half-filled configs fall back to genspark
     settings.provider = activeProvider(settings)
-    return settings
+    if (!aiRuntimeInstalled()) return settings
+    const resolved = await resolveInferenceSettings(settings)
+    // Locked rather than falling back to any stored selection: a build whose
+    // inference is platform-owned must not hand the renderer a provider it
+    // cannot use (a leftover Genspark selection would otherwise advertise a
+    // sign-in that cannot help). Every entry point refuses the turn anyway.
+    if (!resolved) return lockedAiSettings(settings)
+    // still honour the same usability rule the standalone path applies
+    resolved.provider = activeProvider(resolved)
+    return resolved
   })
 
   // Genspark account (gsk login state): auth source for AI features; the frontend uses it to prompt login when logged out
@@ -4325,11 +4491,25 @@ export function registerAiIpc(): void {
       } satisfies AiStreamChunk)
       return
     }
+    const send = (chunk: AiStreamChunk) => {
+      if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
+    }
+    // the build's resolver owns provider/endpoint selection; a refusal is the
+    // "not configured on the platform" answer, not a generic failure
+    const inference = await resolveInferenceSettings(settings)
+    if (!inference) {
+      send({
+        requestId: request.requestId,
+        type: 'error',
+        error: aiUnavailableTextOf(tm('errNoModel')),
+      })
+      return
+    }
     const { requestId, system, messages } = request
     const tools = request.tools ?? []
-    const maxTokens = request.maxTokens ?? maxOutputTokensOf(settings)
-    const provider = settings.provider
-    let config = settings.providers?.[provider]
+    const maxTokens = request.maxTokens ?? maxOutputTokensOf(inference)
+    const provider = inference.provider
+    let config = inference.providers?.[provider]
     // the genspark key never enters the settings file; requests take it from the gsk login state
     // set only when the gsk key was injected: a 401 then means that key expired
     let gskKey = ''
@@ -4339,9 +4519,6 @@ export function registerAiIpc(): void {
     }
     // a custom endpoint may name an environment variable instead of storing a key
     config = config ? resolveProfileCredential(config) : config
-    const send = (chunk: AiStreamChunk) => {
-      if (!event.sender.isDestroyed()) event.sender.send('ai:stream-chunk', chunk)
-    }
     if (!config || (provider !== 'codex' && !config.apiKey)) {
       send({
         requestId,
@@ -4557,8 +4734,12 @@ export function registerAiIpc(): void {
     const settings = sanitizeAiSettings(request.settings)
     if (!settings) return { ok: false, error: 'invalid AI settings payload' }
     const { system, user } = request
-    const provider = settings.provider
-    let config = settings.providers?.[provider]
+    const inference = await resolveInferenceSettings(settings)
+    if (!inference) {
+      return { ok: false, error: aiUnavailableTextOf(tm('errNoModel')) }
+    }
+    const provider = inference.provider
+    let config = inference.providers?.[provider]
     // set only when the gsk key was injected: a 401 then means that key expired
     let gskKey = ''
     if (provider === 'genspark' && config && !config.apiKey) {
@@ -4820,7 +5001,7 @@ export function registerDocsIpc(): void {
   void app.whenReady().then(registerLazyMediaProtocol)
   // Node fetch (undici) direct connections get reset under VPN/tun setups; retry over Chromium's stack
   setRescueFetch((url, init) => net.fetch(url, init))
-  setAiUserAgent(`GenOffice/${app.getVersion()}`)
+  setAiUserAgent(`CMLG Office/${app.getVersion()}`)
 
   // shared with the other editor modules — last (identical) registration wins
   ipcMain.removeHandler('app:get-language')
@@ -5959,7 +6140,7 @@ interface DocsShellHooks {
   focusTab(id: string): void
   /** closes the calling tab instead of the whole shell window (Cmd+W / role:'close') */
   closeActiveTab(): void
-  /** Shell router used to open exported PDFs in a new GenOffice tab. */
+  /** Shell router used to open exported PDFs in a new CMLG Office tab. */
   openGeneratedPath?(path: string): boolean
 }
 let shellHooks: DocsShellHooks | null = null
@@ -6498,7 +6679,7 @@ export function createDocsWindow(openPath?: string): BrowserWindow {
     height: 900,
     minWidth: 720,
     minHeight: 550,
-    title: 'GenOffice Docs',
+    title: 'CMLG Office Docs',
     // Word-like custom title bar (document name centered, quick-access buttons)
     ...(process.platform === 'darwin'
       ? { titleBarStyle: 'hiddenInset' as const }
@@ -6779,7 +6960,7 @@ export function startDocsStandalone(): void {
   installContextMenu(app, () => contextMenuLabels(getUiLang()))
   // dev runs must not share the packaged app's userData (recent files, AI settings)
   // or its single-instance lock — otherwise `npm run dev` silently quits whenever
-  // the installed GenOffice Docs is open and forwards its argv there instead.
+  // the installed CMLG Office Docs is open and forwards its argv there instead.
   // AI_OFFICE_USER_DATA: E2E/screenshot runs isolate userData (and the
   // single-instance lock) so parallel automation sessions don't evict each other
   if (process.env.AI_OFFICE_USER_DATA) app.setPath('userData', process.env.AI_OFFICE_USER_DATA)

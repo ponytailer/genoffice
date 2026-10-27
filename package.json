@@ -37,9 +37,10 @@
     "test:e2e": "playwright test --config e2e/playwright.config.ts",
     "notices": "node tools/gen-third-party-notices.mjs",
     "licenses": "node tools/check-licenses.mjs",
-    "dist:mac": "npm run notices && npm run build:all && npm run native:build:universal -w @genoffice/sheets && npm run dist:mac -w @genoffice/shell",
-    "dist:win": "npm run notices && npm run build:all && npm run dist:win -w @genoffice/shell",
-    "dist:linux": "npm run notices && npm run build:all && npm run dist:linux -w @genoffice/shell"
+    "dist": "node scripts/dist.mjs",
+    "dist:mac": "node scripts/dist.mjs --target mac",
+    "dist:win": "node scripts/dist.mjs --target win",
+    "dist:linux": "node scripts/dist.mjs --target linux"
   },
   "dependencies": {
     "ws": "^8.21.1"

@@ -126,7 +126,11 @@ const ribbonTabs = ['Home', 'Insert', 'Page Layout', 'Formulas', 'Data', 'Review
 /// 'Chart Design' is contextual: it exists only while a chart is selected,
 /// and appears without stealing the active tab.
 type RibbonTab =
-  (typeof ribbonTabs)[number] | 'Chart Design' | 'Table Design' | 'Shape Format' | 'Picture Format'
+  | (typeof ribbonTabs)[number]
+  | 'Chart Design'
+  | 'Table Design'
+  | 'Shape Format'
+  | 'Picture Format'
 const CONTEXTUAL_TABS: readonly RibbonTab[] = [
   'Chart Design',
   'Table Design',
@@ -3398,7 +3402,7 @@ function Ribbon({
             <GensparkMark size={26} />
           </span>
           <span>
-            <strong>Genspark AI</strong>
+            <strong>CMLG AI</strong>
           </span>
         </button>
         <button

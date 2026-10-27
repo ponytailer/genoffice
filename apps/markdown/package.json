@@ -1,6 +1,6 @@
 {
   "name": "@genoffice/markdown",
-  "productName": "GenOffice Markdown",
+  "productName": "CMLG Office Markdown",
   "version": "0.1.0",
   "license": "Apache-2.0",
   "private": true,
@@ -60,7 +60,7 @@
     "vite": "^7.3.7",
     "vitest": "^4.1.12"
   },
-  "author": "GenOffice",
+  "author": "CMLG Office",
   "dependencies": {
     "@tiptap/extension-mathematics": "3.31.0",
     "katex": "^0.18.2",

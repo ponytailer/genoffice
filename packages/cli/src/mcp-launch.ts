@@ -25,9 +25,12 @@ export function mcpLaunch(cli: {
   return { command: onPath ? 'genoffice' : `${dir}/genoffice`, args: ['mcp'] }
 }
 
+/** The packaged Windows app binary beside `<install>\resources\cli`. */
+const WIN_APP_EXE = 'CMLG Office.exe'
+
 function windowsAppLaunch(dir: string): McpLaunch {
   return {
-    command: `${dir}\\..\\..\\GenOffice.exe`,
+    command: `${dir}\\..\\..\\${WIN_APP_EXE}`,
     args: [`${dir}\\genoffice.cjs`, 'mcp'],
     env: { ELECTRON_RUN_AS_NODE: '1' },
   }
@@ -54,6 +57,8 @@ export function mcpLaunchFromLauncher(
   const sep = isWindowsPath(launcher) ? '\\' : '/'
   const dir = launcher.slice(0, Math.max(launcher.lastIndexOf('\\'), launcher.lastIndexOf('/')))
   const exists = opts.exists ?? (() => false)
+  if (exists(`${dir}${sep}..${sep}..${sep}${WIN_APP_EXE}`)) return windowsAppLaunch(dir)
+  // a pre-rename install still has the old binary beside its cli dir
   if (exists(`${dir}${sep}..${sep}..${sep}GenOffice.exe`)) return windowsAppLaunch(dir)
   const bundle = exists(`${dir}${sep}genoffice.cjs`)
     ? `${dir}${sep}genoffice.cjs`

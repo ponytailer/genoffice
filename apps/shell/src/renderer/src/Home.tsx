@@ -841,6 +841,9 @@ function AccountEntry({
       if (ev.phase === 'url') {
         if (ev.url) setAuthUrl(ev.url)
         if (ev.expiresInSec) loginDeadline.current = Date.now() + ev.expiresInSec * 1000
+      } else if (ev.phase === 'launched') {
+        // the platform sign-in window opens in-app: only the deadline matters
+        if (ev.expiresInSec) loginDeadline.current = Date.now() + ev.expiresInSec * 1000
       } else if (ev.phase === 'success') {
         void window.aiOffice.accountStatus().then((s) => {
           if (s.loggedIn) {
@@ -852,8 +855,15 @@ function AccountEntry({
       } else if (ev.phase === 'error') {
         setWaiting(false)
         setAuthUrl(null)
+        // closing the platform window is a cancel, not a failure
         setLoginError(
-          ev.error === 'network' ? 'network' : ev.error === 'expired' ? 'expired' : 'failed',
+          ev.error === 'cancelled'
+            ? null
+            : ev.error === 'network'
+              ? 'network'
+              : ev.error === 'expired'
+                ? 'expired'
+                : 'failed',
         )
       }
     })
@@ -880,8 +890,11 @@ function AccountEntry({
   }, [waiting, loginNonce])
 
   const loggedIn = status?.loggedIn ?? false
-  const email = status?.email ?? ''
-  const initial = email ? email[0].toUpperCase() : loggedIn ? 'G' : '?'
+  const platformUser = status?.user
+  // the account button shows the employee's display name; the login name and
+  // email stay in the tooltip / settings pane
+  const displayName = platformUser?.displayName ?? platformUser?.username ?? status?.email ?? ''
+  const initial = displayName ? displayName[0]!.toUpperCase() : loggedIn ? '员' : '?'
   const errorText = loginError
     ? {
         timeout: t('loginTimeout'),
@@ -1019,7 +1032,9 @@ function AccountEntry({
         aria-expanded={settingsOpen}
         data-tip={
           loggedIn
-            ? email || t('loggedInGenspark')
+            ? [displayName, platformUser?.department, platformUser?.email ?? platformUser?.username]
+                .filter(Boolean)
+                .join(' · ') || t('loggedInGenspark')
             : waiting
               ? t('waitingLogin')
               : (errorText ?? t('loginGenspark'))
@@ -1058,13 +1073,7 @@ function AccountEntry({
         </span>
         <span className="account-text">
           <span className="account-name">
-            {loggedIn
-              ? email
-                ? email.split('@')[0]
-                : t('loggedIn')
-              : waiting
-                ? t('waitingShort')
-                : t('login')}
+            {loggedIn ? displayName || t('loggedIn') : waiting ? t('waitingShort') : t('login')}
           </span>
           {!loggedIn && !waiting && errorText && (
             <span className="account-sub error">{errorText}</span>
@@ -1538,16 +1547,28 @@ export function Home() {
   const [confirmMissing, setConfirmMissing] = useState<RecentEntry | null>(null)
   // name in the greeting; omitted when logged out
   const [accountName, setAccountName] = useState('')
-  // Genspark Projects is web-account data, so its nav entry only shows when logged in
-  const [loggedIn, setLoggedIn] = useState(false)
+  // Genspark Projects is web-account data served by the gsk key, which is a
+  // different identity from the platform account behind the account menu
+  const [gskLoggedIn, setGskLoggedIn] = useState(false)
+  useEffect(() => {
+    let alive = true
+    void window.aiOffice
+      .aiGskStatus?.()
+      .then((s) => {
+        if (alive) setGskLoggedIn(!!s?.loggedIn)
+      })
+      .catch(() => undefined)
+    return () => {
+      alive = false
+    }
+  }, [])
   // single source of account state: AccountEntry reports every change (initial
-  // load, login, logout), keeping the greeting name and the nav entry in sync
+  // load, login, logout), keeping the greeting name in sync
   const handleAccountStatus = useCallback((s: AccountStatus | null) => {
     const on = s?.loggedIn ?? false
-    setLoggedIn(on)
     if (!on) setCloudMode(false)
-    const name = on ? (s?.email ?? '').split('@')[0] : ''
-    setAccountName(name ? name[0].toUpperCase() + name.slice(1) : '')
+    const name = on ? (s?.user?.displayName ?? s?.user?.username ?? s?.email ?? '') : ''
+    setAccountName(name)
   }, [])
   const [greetAskKey] = useState(
     () => GREET_ASK_KEYS[Math.floor(Math.random() * GREET_ASK_KEYS.length)]!,
@@ -3468,7 +3489,7 @@ export function Home() {
         style={sidebarWidth === null ? undefined : { width: sidebarWidth }}
       >
         <div className="sidebar-logo">
-          <img className="logo-lockup" src={logoLockup} alt="GenOffice" />
+          <img className="logo-lockup" src={logoLockup} alt="CMLG Office" />
         </div>
         <nav className="sidebar-nav">
           <button
@@ -3531,7 +3552,7 @@ export function Home() {
             </svg>
             <span className="nav-label">{t('navAsk')}</span>
           </button>
-          {loggedIn && (
+          {gskLoggedIn && (
             <button
               className={`nav-item${cloudMode && !selectedFolder ? ' active' : ''}`}
               onClick={() => {

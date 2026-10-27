@@ -2098,7 +2098,7 @@ export const DocListItem = Node.create({
         }),
       },
       // our own clipboard HTML: renderHTML emits <div class="doc-li …">, which
-      // no rule matched before r117 — pasting a GenOffice list item degraded it
+      // no rule matched before r117 — pasting a CMLG Office list item degraded it
       // to plain text. kind/ilvl ride in data-para; classes are the fallback.
       {
         tag: 'div.doc-li',
@@ -4558,7 +4558,8 @@ export const NativeTableSupport = Extension.create({
           handleDOMEvents: {
             mouseup: (view) => {
               const resizeState = columnResizingPluginKey.getState(view.state) as
-                { dragging?: unknown; activeHandle?: number } | undefined
+                | { dragging?: unknown; activeHandle?: number }
+                | undefined
               if (resizeState?.dragging == null) return false
               const handle = resizeState.activeHandle ?? -1
               if (handle < 0) return false
@@ -6017,16 +6018,18 @@ const IMAGE_RESIZE_HANDLES: readonly ImageResizeHandle[] = [
 ]
 
 function imageSelectionControlsSpec(): DomSpec[] {
-  return IMAGE_RESIZE_HANDLES.map((direction): DomSpec => [
-    'span',
-    {
-      class: `img-resize-handle img-resize-handle-${direction}`,
-      'data-resize-handle': direction,
-      contenteditable: 'false',
-      draggable: 'false',
-      'aria-hidden': 'true',
-    },
-  ])
+  return IMAGE_RESIZE_HANDLES.map(
+    (direction): DomSpec => [
+      'span',
+      {
+        class: `img-resize-handle img-resize-handle-${direction}`,
+        'data-resize-handle': direction,
+        contenteditable: 'false',
+        draggable: 'false',
+        'aria-hidden': 'true',
+      },
+    ],
+  )
 }
 
 function imageAnchorMarkerSpec(): DomSpec {

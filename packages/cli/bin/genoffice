@@ -18,10 +18,10 @@ if [ -n "$GENOFFICE_NODE" ]; then
 fi
 
 case "$here" in
-  */Contents/Resources/cli) app="$here/../../MacOS/GenOffice" ;;
+  */Contents/Resources/cli) app="$here/../../MacOS/CMLG Office" ;;
   */resources/cli)
     # Linux install, or the Windows install reached from Git Bash / MSYS
-    if [ -x "$here/../../GenOffice.exe" ]; then app="$here/../../GenOffice.exe"; else app="$here/../../genoffice"; fi
+    if [ -x "$here/../../CMLG Office.exe" ]; then app="$here/../../CMLG Office.exe"; else app="$here/../../cmlg-office"; fi
     ;;
   *) app="" ;;
 esac

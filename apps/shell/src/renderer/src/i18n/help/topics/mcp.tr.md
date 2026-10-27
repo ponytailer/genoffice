@@ -1,14 +1,14 @@
 # Bir kodlama aracısını bağlama
 
-GenOffice, Model Context Protocol'ü konuşur; böylece bir kodlama aracısı belgelerinizi uygulamanın kullandığı motorlarla okuyabilir, yazabilir ve işleyebilir. Aracı bir dosya biçimini tahmin etmez: yazılı işlem şemalarını, yürütücünün doğrulama yaptığı tanımların aynısından alır.
+CMLG Office, Model Context Protocol'ü konuşur; böylece bir kodlama aracısı belgelerinizi uygulamanın kullandığı motorlarla okuyabilir, yazabilir ve işleyebilir. Aracı bir dosya biçimini tahmin etmez: yazılı işlem şemalarını, yürütücünün doğrulama yaptığı tanımların aynısından alır.
 
 ## Uygulamadan kaydetme
 
 Bunu yapacağınız yer **Ayarlar ▸ Tümleştirmeler**'dir. Bölmenin iki yarısı vardır ve birini ya da ikisini birden kullanabilirsiniz.
 
-**Beceri.** Bu makinede bulunan her kodlama aracısı için bir satır — Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf — her biri **Yükle**, **Güncelle** ve **Kaldır** ile, ayrıca **Başka bir klasöre yükle…**, **Beceriyi indir (zip)** ve **Yolu kopyala**. Yardımcınız listede yoksa GenOffice'i onun `SKILL.md` okuduğu bir klasöre yönlendirin ya da zip'i kaydedip yardımcının yüklemesine izin verin. Beceri ile MCP yan yana durabilir: yardımcı birini seçer ve ikisi de tamamen aynı şeyleri yapar.
+**Beceri.** Bu makinede bulunan her kodlama aracısı için bir satır — Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf — her biri **Yükle**, **Güncelle** ve **Kaldır** ile, ayrıca **Başka bir klasöre yükle…**, **Beceriyi indir (zip)** ve **Yolu kopyala**. Yardımcınız listede yoksa CMLG Office'i onun `SKILL.md` okuduğu bir klasöre yönlendirin ya da zip'i kaydedip yardımcının yüklemesine izin verin. Beceri ile MCP yan yana durabilir: yardımcı birini seçer ve ikisi de tamamen aynı şeyleri yapar.
 
-**MCP.** İki yol sunulur: **Yardımcı tarafından başlatılan (önerilen)**, burada gösterilen yapılandırmayı istemcinize eklersiniz ve sunucuyu yardımcı kendisi başlatır; ve uygulamanın sizin için çalıştırdığı **Yerel HTTP sunucusu**. Her iki durumda da yardımcı sonunda GenOffice ile konuşur ve siz hiçbir zaman komut yazmazsınız.
+**MCP.** İki yol sunulur: **Yardımcı tarafından başlatılan (önerilen)**, burada gösterilen yapılandırmayı istemcinize eklersiniz ve sunucuyu yardımcı kendisi başlatır; ve uygulamanın sizin için çalıştırdığı **Yerel HTTP sunucusu**. Her iki durumda da yardımcı sonunda CMLG Office ile konuşur ve siz hiçbir zaman komut yazmazsınız.
 
 ## Komut satırından kaydetme
 
@@ -70,7 +70,7 @@ GENOFFICE_MCP_COMPACT_SCHEMAS=1 genoffice mcp
 
 ## Uygulamada ulaşabildikleri
 
-Sunucu diskteki dosyalarla sınırlı değildir. GenOffice çalışırken aracı pencere üzerinden de çalışabilir:
+Sunucu diskteki dosyalarla sınırlı değildir. CMLG Office çalışırken aracı pencere üzerinden de çalışabilir:
 
 - **`open_in_genoffice`** bir dosyayı sekmede açar ve odaklar.
 - **`open_documents`** açık olan her belgeyi listeler — kimlik, tür, yol ve kaydedilmemiş değişiklik olup olmadığı — sonra birinin canlı içeriğini okur, yerinde kaydeder ya da siz atmasını istemedikçe önce kaydederek kapatır.

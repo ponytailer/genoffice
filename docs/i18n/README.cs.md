@@ -487,9 +487,7 @@ npm test             # engine + app unit tests (docs/sheets/slides need no displ
 npm run typecheck    # tsc --noEmit across every workspace
 npm run dev          # all six editors + shell against Vite dev servers
 npm run dev:docs     # a single app (same pattern works per workspace)
-npm run dist:mac     # package macOS dmg (regenerates third-party notices)
-npm run dist:win     # package Windows nsis installer
-npm run dist:linux   # package Linux AppImage + deb + rpm
+npm run dist         # package the host platform (--target mac|win|linux, --dir)
 ```
 
 Aplikace sheets navíc potřebuje pro svůj xlsx sidecar Rust toolchain

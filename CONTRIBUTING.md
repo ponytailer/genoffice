@@ -111,13 +111,23 @@ formatting diff.
 
 ## Building installers
 
-Run these from the repository root — they regenerate the third-party
-notices and build all seven apps before packaging:
+Run these from the repository root. `npm run dist` is the single packaging
+entrypoint: it regenerates the third-party notices, builds all seven apps, adds
+the macOS universal xlsx sidecar when it is packaging mac, and only then runs
+electron-builder.
 
 ```bash
-npm run dist:mac   # dmg + zip
-npm run dist:win   # nsis installer
+npm run dist                  # the host platform
+npm run dist -- --target mac  # dmg + zip
+npm run dist -- --target win  # nsis installer
+npm run dist -- --dir         # unpacked app only (fast smoke test)
+npm run dist -- --dry-run     # print the resolved steps, build nothing
 ```
+
+Anything the script does not recognise is forwarded to electron-builder, so
+`npm run dist -- --publish never` and `-c.extraMetadata.version=…` work as
+usual. `--no-build` reuses the existing `out/` trees and `--no-notices` keeps
+the current notice file; both exist for iterating on packaging itself.
 
 Without Apple or Windows signing credentials in the environment these produce
 unsigned artifacts: code signing and notarization are skipped with a warning
@@ -130,12 +140,12 @@ over them. Point the output directory at an APFS path instead of moving the
 repository:
 
 ```bash
-BUILD_DIR=/tmp/genoffice-release npm run dist:mac
+BUILD_DIR=/tmp/genoffice-release npm run dist -- --target mac
 ```
 
-`dist:win` takes the xlsx sidecar from the MinGW cross-compilation path when it
-is there (that is what the release pipeline builds). On a Windows host the plain
-`npm run build:all` compiles it with the host toolchain into
+`--target win` takes the xlsx sidecar from the MinGW cross-compilation path when
+it is there (that is what the release pipeline builds). On a Windows host the
+plain `npm run build:all` compiles it with the host toolchain into
 `target/release/xlsx-sidecar.exe` instead, and packaging accepts that build as
 long as the host architecture matches the packaged one (`GENOFFICE_WIN_ARM64=1`
 still needs a cross build for `aarch64-pc-windows-msvc`).

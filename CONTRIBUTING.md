@@ -197,6 +197,17 @@ free Search MCP, then DuckDuckGo).
   open/save paths (docx/xlsx/pptx), include a round-trip test proving
   untouched content survives byte-for-byte.
 
+## Changelog
+
+Every user-visible change gets an entry in [CHANGELOG.md](CHANGELOG.md) under
+`## [未发布]`, written as a new bullet in the matching heading (`新增` /
+`变更` / `修复` / `移除` / `安全`) — never rewrite or reorder older entries.
+Describe what the user sees, not which file moved, and tag the affected area
+(`shell`, `docs`, `sheets`, `打包`, …) in parentheses at the end. Internal-only
+refactors fold into the entry they serve instead of getting their own line.
+When a release is cut, `## [未发布]` is renamed to the new version with its
+date and a fresh empty `## [未发布]` section is opened above it.
+
 ## Reporting bugs and requesting features
 
 Use the issue templates. For suspected security issues, do **not** open a

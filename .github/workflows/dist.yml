@@ -1,0 +1,276 @@
+name: Dist (macOS + Windows)
+
+# Manually triggered installer builds. macOS and Windows only — Linux is
+# handled outside this repo's CI (AppImage/deb/rpm need fpm+rpmbuild and are
+# not part of this pipeline).
+#
+# Trigger:
+#   * Actions → "Dist (macOS + Windows)" → Run workflow (optional version input)
+#   * git tag push (v0.12.1) — the tag name supplies the version
+#   * gh workflow run dist.yml -f version=0.12.1
+#
+# Download the result from the run page: Artifacts → mac-* / win-*.
+# Nothing is published anywhere: electron-builder only publishes when
+# GENOFFICE_UPDATE_URL is set, which this workflow does not do.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'App version (empty = apps/shell/package.json, e.g. 0.12.1)'
+        required: false
+        default: ''
+      targets:
+        description: 'Platforms to package'
+        type: choice
+        options: [both, mac, win]
+        default: both
+      mac_x64:
+        description: 'Also build the Intel (x64) dmg/zip next to arm64'
+        type: boolean
+        default: true
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: dist-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  mac:
+    if: github.event_name == 'push' || inputs.targets == 'both' || inputs.targets == 'mac'
+    # arm64 macOS: builds the universal (arm64 + x86_64) xlsx-sidecar and the
+    # universal vision-ocr helper, then both dmg/zip slices.
+    runs-on: macos-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      # Must precede the Rust/Node setup steps: they consume these variables.
+      - name: Configure download mirrors
+        if: vars.DIST_MIRROR != 'off'
+        shell: bash
+        run: |
+          cat >> "$GITHUB_ENV" <<'MIRRORS'
+          ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+          RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rustup
+          RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rustup/rustup
+          MIRRORS
+          npm config set registry https://registry.npmmirror.com
+          cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+          mkdir -p "$cargo_home"
+          cat > "$cargo_home/config.toml" <<'CARGO'
+          [source.crates-io]
+          replace-with = 'rsproxy-sparse'
+
+          [source.rsproxy-sparse]
+          registry = 'sparse+https://rsproxy.cn/index/'
+          CARGO
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      # Both darwin targets: the packaging path lipos them into one fat sidecar.
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable branch, 2026-07
+        with:
+          toolchain: stable
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache cargo (xlsx-sidecar)
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: apps/sheets/native/xlsx-engine
+
+      # Electron runtime zips and electron-builder's nsis/dmg helpers are
+      # downloaded on every clean machine; the cache skips both.
+      - name: Cache electron downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/.cache/electron
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-dist-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-dist-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ] && [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Package macOS
+        shell: bash
+        env:
+          VERSION: ${{ steps.v.outputs.value }}
+          GENOFFICE_MAC_X64: ${{ inputs.mac_x64 && '1' || '' }}
+          # Empty means "no publish config": the build then bakes no
+          # app-update.yml and in-app auto-update stays off. Set the repo
+          # variable UPDATE_URL to ship an updatable build.
+          GENOFFICE_UPDATE_URL: ${{ vars.UPDATE_URL }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          # `-c.extraMetadata.version` is the same override the release pipeline
+          # uses; it deep-merges into electron-builder.cjs and drives both the
+          # app's reported version and the ${version} in every artifact name.
+          extra=()
+          if [ -n "$VERSION" ]; then
+            extra+=("-c.extraMetadata.version=$VERSION")
+          fi
+          # Signing is skipped with a warning when the secrets are absent, so a
+          # contributor fork produces unsigned installers instead of failing.
+          if [ -n "$MAC_CSC_LINK" ]; then
+            export CSC_LINK="$MAC_CSC_LINK"
+            export CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"
+          fi
+          # --publish never: the feed files (latest-mac.yml / beta-mac.yml) are
+          # still written into the output dir, they are just not uploaded — the
+          # step below ships them as artifacts for the CDN upload.
+          npm run dist -- --target mac --publish never "${extra[@]}"
+
+      - name: Upload installers
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mac-${{ steps.v.outputs.value || github.sha }}
+          path: |
+            apps/shell/release/*.dmg
+            apps/shell/release/*.zip
+            apps/shell/release/*.blockmap
+            apps/shell/release/*.yml
+          if-no-files-found: warn
+          retention-days: 14
+
+  win:
+    if: github.event_name == 'push' || inputs.targets == 'both' || inputs.targets == 'win'
+    # Windows runner, not a cross build: the xlsx-sidecar is compiled here with
+    # MSVC (packaging accepts the host-native target/release build when the
+    # arch matches) and win-ocr.exe needs the in-box .NET compiler.
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Configure download mirrors
+        if: vars.DIST_MIRROR != 'off'
+        shell: bash
+        run: |
+          cat >> "$GITHUB_ENV" <<'MIRRORS'
+          ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
+          ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
+          RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rustup
+          RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rustup/rustup
+          MIRRORS
+          npm config set registry https://registry.npmmirror.com
+          cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+          mkdir -p "$cargo_home"
+          cat > "$cargo_home/config.toml" <<'CARGO'
+          [source.crates-io]
+          replace-with = 'rsproxy-sparse'
+
+          [source.rsproxy-sparse]
+          registry = 'sparse+https://rsproxy.cn/index/'
+          CARGO
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@4cda84d5c5c54efe2404f9d843567869ab1699d4 # stable branch, 2026-07
+        with:
+          toolchain: stable
+
+      - name: Cache cargo (xlsx-sidecar)
+        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
+        with:
+          workspaces: apps/sheets/native/xlsx-engine
+
+      - name: Cache electron downloads
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/Library/Caches/electron
+            ~/Library/Caches/electron-builder
+            ~/.cache/electron
+            ~/AppData/Local/electron/Cache
+            ~/AppData/Local/electron-builder/Cache
+          key: electron-dist-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          restore-keys: electron-dist-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Resolve version
+        id: v
+        shell: bash
+        run: |
+          version="${{ inputs.version }}"
+          if [ -z "$version" ] && [ "$GITHUB_REF_TYPE" = "tag" ]; then
+            version="${GITHUB_REF_NAME#v}"
+          fi
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Package Windows
+        shell: bash
+        env:
+          VERSION: ${{ steps.v.outputs.value }}
+          # repo variable, not a guess: "test" = self-signed PFX,
+          # "production" = DigiCert KeyLocker. Empty keeps the build unsigned.
+          GENOFFICE_WIN_SIGN_MODE: ${{ vars.WIN_SIGN_MODE }}
+          GENOFFICE_UPDATE_URL: ${{ vars.UPDATE_URL }}
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          extra=()
+          if [ -n "$VERSION" ]; then
+            extra+=("-c.extraMetadata.version=$VERSION")
+          fi
+          if [ -n "$WIN_CSC_LINK" ]; then
+            export CSC_LINK="$WIN_CSC_LINK"
+            export CSC_KEY_PASSWORD="$WIN_CSC_KEY_PASSWORD"
+          fi
+          npm run dist -- --target win --publish never "${extra[@]}"
+
+      - name: Upload installers
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: win-${{ steps.v.outputs.value || github.sha }}
+          path: |
+            apps/shell/release/*.exe
+            apps/shell/release/*.blockmap
+            apps/shell/release/*.yml
+          if-no-files-found: warn
+          retention-days: 14

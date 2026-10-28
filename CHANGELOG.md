@@ -45,6 +45,10 @@
   electron-builder。支持 `--target mac|win|linux|all`、`--dir`、`--no-build`、
   `--no-notices`、`--dry-run`，未识别的参数原样透传给 electron-builder
   （例如 `--publish never`）。（`打包`）
+- **GitHub Actions 打包流水线**：新增 `.github/workflows/dist.yml`，在 Actions 里手动触发
+  （或推 `v*` 标签）就能产出 macOS arm64 + x64 与 Windows 安装包；版本号可由输入框覆盖。
+  Electron、electron-builder、cargo 默认走国内镜像（仓库变量 `DIST_MIRROR=off` 可切回官方源），
+  Linux 不在该流水线内。（`打包`）
 
 ### 变更
 

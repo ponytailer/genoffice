@@ -286,14 +286,34 @@ for (const asset of uploads) {
   console.log(`  ${humanSize(statSync(asset).size).padStart(9)}  ${relative(workDir, asset)}`)
 }
 
+const releasePage = `https://github.com/${owner}/${name}/releases/tag/${tag}`
 const downloadUrl = (file) =>
   `https://github.com/${owner}/${name}/releases/download/${tag}/${encodeURIComponent(file)}`
 const urls = uploads.map((asset) => ({ name: basename(asset), url: downloadUrl(basename(asset)) }))
+
+/** Markdown table for $GITHUB_STEP_SUMMARY: the run page becomes the index of
+ * downloads, so nobody has to hunt through the Artifacts list. */
+function writeSummary() {
+  const rows = [...urls, { name: 'SHA256SUMS.txt', url: downloadUrl('SHA256SUMS.txt') }]
+    .map((entry) => {
+      const path = join(workDir, entry.name)
+      const size = existsSync(path) ? humanSize(statSync(path).size) : '—'
+      return `| [${entry.name}](${entry.url}) | ${size} |`
+    })
+    .join('\n')
+  appendFileSync(
+    summaryFile,
+    `\n## Release ${tag}\n\n${releasePage}\n\n| Asset | Size |\n| --- | --- |\n${rows}\n`,
+  )
+}
 
 if (dryRun) {
   step('dry run — nothing uploaded')
   for (const entry of urls) console.log(`  ${entry.name}\n    ${entry.url}`)
   console.log(`\n  release page: https://github.com/${owner}/${name}/releases/tag/${tag}`)
+  // render the run-page table as well: --dry-run is where its formatting gets
+  // checked without touching a published release
+  if (summaryFile) writeSummary()
   process.exit(0)
 }
 
@@ -327,25 +347,13 @@ writeFileSync(sumsPath, `${lines.join('\n')}\n`)
 step(`uploading ${uploads.length + 1} assets`)
 gh(['release', 'upload', tag, ...uploads, sumsPath, '--clobber'], { inherit: true })
 
-const releasePage = `https://github.com/${owner}/${name}/releases/tag/${tag}`
 const allUrls = [...urls, { name: 'SHA256SUMS.txt', url: downloadUrl('SHA256SUMS.txt') }]
 
 step('done')
 for (const entry of allUrls) console.log(`  ${entry.name}\n    ${entry.url}`)
 console.log(`\n  release page: ${releasePage}`)
 
-if (summaryFile) {
-  const rows = allUrls
-    .map(
-      (entry) =>
-        `| [${entry.name}](${entry.url}) | ${humanSize(statSync(join(workDir, entry.name)).size)} |`,
-    )
-    .join('\n')
-  appendFileSync(
-    summaryFile,
-    `\n## Release ${tag}\n\n${releasePage}\n\n| Asset | Size |\n| --- | --- |\n${rows}\n`,
-  )
-}
+if (summaryFile) writeSummary()
 
 if (keep || fromDir) console.log(`  artifacts in ${workDir}`)
 else rmSync(workDir, { recursive: true, force: true })

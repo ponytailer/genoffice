@@ -1245,10 +1245,7 @@ export function AiPanel({
         aria-label={t('aiOpenAssistant')}
       />
       <header className="ai-panel-header">
-        <span className="ai-panel-title">
-          <GensparkMark size={22} />
-          Genspark
-        </span>
+        <span className="ai-panel-title">Genspark</span>
         <div className="ai-panel-header-actions">
           <AiPanelSideButton
             lang={lang}

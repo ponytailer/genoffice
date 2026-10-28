@@ -1461,10 +1461,7 @@ export function AiPanel({
         aria-label={t('aiPanelTitle')}
       />
       <div className="ai-panel-header">
-        <span className="ai-panel-title">
-          <GensparkMark size={22} />
-          {t('aiPanelTitle')}
-        </span>
+        <span className="ai-panel-title">{t('aiPanelTitle')}</span>
         <div className="ai-panel-header-actions">
           <AiPanelSideButton
             lang={lang}

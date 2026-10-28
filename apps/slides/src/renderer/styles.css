@@ -633,17 +633,12 @@ button {
   box-shadow: var(--slides-shadow-badge-soft);
 }
 
-/* Genspark brand logo (Ribbon AI button / AI panel title / collapsed entry) */
+/* Genspark brand logo (Ribbon AI button / collapsed entry) */
 .genspark-badge {
   display: block;
   width: 22px;
   height: 22px;
   border-radius: 50%;
-}
-
-.ai-panel-title .genspark-badge {
-  width: 18px;
-  height: 18px;
 }
 /* ---- ribbon body ---- */
 

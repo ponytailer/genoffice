@@ -60,8 +60,8 @@ jobs:
           cat >> "$GITHUB_ENV" <<'MIRRORS'
           ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
           ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
-          RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rustup
-          RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rustup/rustup
+          RUSTUP_DIST_SERVER=https://rsproxy.cn
+          RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
           MIRRORS
           npm config set registry https://registry.npmmirror.com
           cargo_home="${CARGO_HOME:-$HOME/.cargo}"
@@ -186,8 +186,8 @@ jobs:
           cat >> "$GITHUB_ENV" <<'MIRRORS'
           ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/
           ELECTRON_BUILDER_BINARIES_MIRROR=https://npmmirror.com/mirrors/electron-builder-binaries/
-          RUSTUP_DIST_SERVER=https://mirrors.ustc.edu.cn/rustup
-          RUSTUP_UPDATE_ROOT=https://mirrors.ustc.edu.cn/rustup/rustup
+          RUSTUP_DIST_SERVER=https://rsproxy.cn
+          RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
           MIRRORS
           npm config set registry https://registry.npmmirror.com
           cargo_home="${CARGO_HOME:-$HOME/.cargo}"

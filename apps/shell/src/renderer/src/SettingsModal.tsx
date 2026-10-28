@@ -162,18 +162,17 @@ function CustomFontSizeInput({
   )
 }
 
-export type SectionId =
-  'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'skills' | 'about'
+export type SectionId = 'account' | 'aiModel' | 'aiMedia' | 'general' | 'integrations' | 'skills'
 
 // 集成 (integrations) and 生图与媒体 (aiMedia) are hidden from the nav for the
 // CMLG deployment; the panes below stay reachable through a deep link so the
-// settings target API keeps working.
+// settings target API keeps working. The About pane is gone entirely: the app
+// menu's own About panel owns the version, and the updater speaks for itself.
 const SECTIONS: readonly { id: SectionId; labelKey: StringKey }[] = [
   { id: 'account', labelKey: 'setSecAccount' },
   { id: 'aiModel', labelKey: 'setSecAiModel' },
   { id: 'general', labelKey: 'setSecGeneral' },
   { id: 'skills', labelKey: 'setSecSkills' },
-  { id: 'about', labelKey: 'setSecAbout' },
 ]
 
 function SectionIcon({ id }: { id: SectionId }) {
@@ -1171,7 +1170,6 @@ export function SettingsModal({
   const [aiPrefs, setAiPrefs] = useState<AiPanelPrefs>(DEFAULT_AI_PANEL_PREFS)
   const [authorName, setAuthorName] = useState<AuthorNameSetting>({ value: '', fallback: '' })
   const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
-  const [appVersion, setAppVersion] = useState('')
   const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
 
   useEffect(() => {
@@ -1212,12 +1210,8 @@ export function SettingsModal({
     void window.aiOffice.getAutoUpdateCheck?.().then((on) => {
       if (alive) setAutoUpdateCheckOn(on)
     })
-    void window.aiOffice.getAppVersion?.().then((v) => {
-      if (alive && v) setAppVersion(v)
-    })
-    // a rejected invoke (main process not ready, a shell whose preload does
-    // not expose the channel) must not surface as an unhandled rejection;
-    // without a known state the About row simply stays hidden
+    // a rejected invoke (main process not ready, a shell whose preload does not
+    // expose the channel) must not surface as an unhandled rejection
     void window.aiOffice
       .getUpdateState?.()
       .then((s) => {
@@ -1370,9 +1364,6 @@ export function SettingsModal({
                       <Field label={t('setDepartment')} value={status.user.department} />
                     )}
                     {status.user.email && <Field label={t('setEmail')} value={status.user.email} />}
-                    {status.user.tenantId && (
-                      <Field label={t('setTenant')} value={status.user.tenantId} />
-                    )}
                   </>
                 ) : (
                   <>
@@ -1687,16 +1678,6 @@ export function SettingsModal({
                     }}
                   />
                 </div>
-              </>
-            )}
-            {section === 'integrations' && (
-              <IntegrationsPane t={t} onStatus={(st) => onSkillUpdateDue?.(skillUpdateDue(st))} />
-            )}
-            {section === 'skills' && <FoundSkills t={t} />}
-            {section === 'about' && (
-              <>
-                <h3 className="set-pane-title">{t('setSecAbout')}</h3>
-                <Field label={t('versionLabel')} value={appVersion || '—'} />
                 {updateState && (
                   <div className="set-field">
                     <div className="set-field-text">
@@ -1757,6 +1738,10 @@ export function SettingsModal({
                 </div>
               </>
             )}
+            {section === 'integrations' && (
+              <IntegrationsPane t={t} onStatus={(st) => onSkillUpdateDue?.(skillUpdateDue(st))} />
+            )}
+            {section === 'skills' && <FoundSkills t={t} />}
           </div>
         </div>
       </div>

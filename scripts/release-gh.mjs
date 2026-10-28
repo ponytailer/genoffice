@@ -14,16 +14,30 @@
 //   npm run release -- --notes notes.md   # release body from a file
 //   npm run release -- --keep             # keep the downloaded artifacts
 //
-// Auth comes from the `gh` CLI (run `gh auth login` once); no token is read or
-// written here. Everything is idempotent: an existing release is reused and its
+// `--from <dir>` skips the download and publishes a directory that already holds
+// the installers — the workflow uses it with actions/download-artifact, so CI and
+// a laptop share one implementation. `--summary <file>` appends a markdown link
+// list to that file (GitHub's $GITHUB_STEP_SUMMARY), which is what turns the run
+// page into a table of download links.
+//
+// Auth comes from the `gh` CLI (run `gh auth login` once, or GH_TOKEN in CI); no
+// token is read or written here. Everything is idempotent: an existing release is reused and its
 // assets are replaced, so re-running after a failed upload is safe.
 
 import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { createReadStream } from 'node:fs'
-import { existsSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
+import {
+  appendFileSync,
+  existsSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs'
 import { tmpdir } from 'node:os'
-import { basename, dirname, join, relative } from 'node:path'
+import { basename, dirname, join, relative, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const repoRoot = dirname(dirname(fileURLToPath(import.meta.url)))
@@ -43,8 +57,7 @@ function usage(message) {
   if (message) console.error(`[release] ${message}`)
   console.error(
     'Usage: npm run release -- [--run <id>] [--tag <tag>] [--draft] [--dry-run] [--keep] ' +
-      '[--refresh] ' +
-      '[--notes <file>]',
+      '[--refresh] [--notes <file>] [--from <dir>] [--summary <file>]',
   )
   process.exit(2)
 }
@@ -57,6 +70,8 @@ let dryRun = false
 let keep = false
 let refresh = false
 let notesFile = null
+let fromDir = null
+let summaryFile = null
 for (let i = 0; i < argv.length; i++) {
   const arg = argv[i]
   const takeValue = (name) => {
@@ -71,6 +86,8 @@ for (let i = 0; i < argv.length; i++) {
   else if (arg === '--dry-run') dryRun = true
   else if (arg === '--keep') keep = true
   else if (arg === '--refresh') refresh = true
+  else if (arg === '--from') fromDir = takeValue('--from')
+  else if (arg === '--summary') summaryFile = takeValue('--summary')
   else usage(`unknown argument "${arg}"`)
 }
 
@@ -137,48 +154,59 @@ const [owner, name] = repo.split('/')
 
 // ---- pick the run ----------------------------------------------------------
 
-step(`looking for a successful ${WORKFLOW} run`)
-let run
-if (runId) {
-  run = ghJson([
-    'run',
-    'view',
-    runId,
-    '--json',
-    'databaseId,headBranch,event,status,conclusion,createdAt,displayTitle',
-  ])
-  if (run.conclusion !== 'success') {
-    console.error(`[release] run ${runId} is ${run.conclusion ?? run.status}, not successful`)
-    process.exit(1)
-  }
+// With both --from and --tag the run is irrelevant — that is how the workflow
+// publishes its own build, where polling the Actions API for the in-flight run
+// would only add a failure mode.
+let run = null
+if (fromDir && tag) {
+  step(`publishing ${tag} from ${fromDir} (no run lookup needed)`)
 } else {
-  // `gh run list` returns runs newest first, so the first success is the one to ship
-  const runs = ghJson([
-    'run',
-    'list',
-    '--workflow',
-    WORKFLOW,
-    '--limit',
-    '20',
-    '--json',
-    'databaseId,headBranch,event,status,conclusion,createdAt,displayTitle',
-  ])
-  run = runs.find((candidate) => candidate.conclusion === 'success')
-  if (!run) {
-    console.error(`[release] no successful ${WORKFLOW} run found — trigger a tag build first`)
-    process.exit(1)
+  step(`looking for a successful ${WORKFLOW} run`)
+  if (runId) {
+    run = ghJson([
+      'run',
+      'view',
+      runId,
+      '--json',
+      'databaseId,headBranch,event,status,conclusion,createdAt,displayTitle',
+    ])
+    if (run.conclusion !== 'success') {
+      console.error(`[release] run ${runId} is ${run.conclusion ?? run.status}, not successful`)
+      process.exit(1)
+    }
+  } else {
+    // `gh run list` returns runs newest first, so the first success is the one to ship
+    const runs = ghJson([
+      'run',
+      'list',
+      '--workflow',
+      WORKFLOW,
+      '--limit',
+      '20',
+      '--json',
+      'databaseId,headBranch,event,status,conclusion,createdAt,displayTitle',
+    ])
+    run = runs.find((candidate) => candidate.conclusion === 'success')
+    if (!run) {
+      console.error(`[release] no successful ${WORKFLOW} run found — trigger a tag build first`)
+      process.exit(1)
+    }
   }
-}
-runId = String(run.databaseId)
-run.artifacts ??= fetchArtifacts(runId)
-console.log(`  run ${runId}  ${run.displayTitle ?? ''}  (${run.event}, ${run.createdAt})`)
+  runId = String(run.databaseId)
+  console.log(`  run ${runId}  ${run.displayTitle ?? ''}  (${run.event}, ${run.createdAt})`)
 
-if (!run.artifacts?.length) {
-  console.error(`[release] run ${runId} has no artifacts — did packaging fail?`)
-  process.exit(1)
-}
-for (const artifact of run.artifacts) {
-  console.log(`  artifact ${artifact.name}  ${humanSize(artifact.sizeInBytes ?? 0)}`)
+  if (fromDir) {
+    console.log(`  installers come from ${fromDir}`)
+  } else {
+    run.artifacts ??= fetchArtifacts(runId)
+    if (!run.artifacts?.length) {
+      console.error(`[release] run ${runId} has no artifacts — did packaging fail?`)
+      process.exit(1)
+    }
+    for (const artifact of run.artifacts) {
+      console.log(`  artifact ${artifact.name}  ${humanSize(artifact.sizeInBytes ?? 0)}`)
+    }
+  }
 }
 
 // ---- resolve the tag -------------------------------------------------------
@@ -186,16 +214,17 @@ for (const artifact of run.artifacts) {
 // A tag-triggered run carries the tag as its branch name; a manual run carries
 // the branch it was dispatched from, so fall back to the packaged app version.
 if (!tag) {
-  if (run.event === 'push' && /^v\d/.test(run.headBranch)) tag = run.headBranch
+  if (run?.event === 'push' && /^v\d/.test(run.headBranch)) tag = run.headBranch
   else
     tag = `v${JSON.parse(readFileSync(join(repoRoot, 'apps/shell/package.json'), 'utf8')).version}`
 }
 if (!/^v\d/.test(tag)) usage(`refusing tag "${tag}" — expected a version tag like v0.1.0`)
 step(`release tag: ${tag}`)
 
-// A dry run stops here: the asset filenames only exist inside the artifact zips,
-// and downloading several hundred MB to print a plan is not worth it.
-if (dryRun) {
+// A dry run stops here unless the installers are already on disk (--from): the
+// asset filenames only exist inside the artifact zips, and downloading several
+// hundred MB just to print a plan is not worth it.
+if (dryRun && !fromDir) {
   step('dry run — nothing downloaded, nothing uploaded')
   console.log(`  installers of these artifacts would be attached to ${tag}:`)
   for (const artifact of run.artifacts) console.log(`    ${artifact.name}`)
@@ -207,9 +236,15 @@ if (dryRun) {
 
 // `gh run download` cannot resume, so a previous complete download is reused
 // instead of paying for the transfer again; --refresh forces a fresh copy.
-const workDir = join(tmpdir(), `genoffice-release-${runId}`)
+const workDir = fromDir ? resolve(fromDir) : join(tmpdir(), `genoffice-release-${runId}`)
 const completeMarker = join(workDir, '.downloaded')
-if (existsSync(completeMarker) && !refresh) {
+if (fromDir) {
+  if (!existsSync(workDir)) {
+    console.error(`[release] --from ${workDir} does not exist`)
+    process.exit(1)
+  }
+  step(`using the installers already in ${workDir}`)
+} else if (existsSync(completeMarker) && !refresh) {
   step(`reusing the artifacts already in ${workDir} (--refresh re-downloads)`)
 } else {
   step(`downloading artifacts into ${workDir}`)
@@ -255,6 +290,13 @@ const downloadUrl = (file) =>
   `https://github.com/${owner}/${name}/releases/download/${tag}/${encodeURIComponent(file)}`
 const urls = uploads.map((asset) => ({ name: basename(asset), url: downloadUrl(basename(asset)) }))
 
+if (dryRun) {
+  step('dry run — nothing uploaded')
+  for (const entry of urls) console.log(`  ${entry.name}\n    ${entry.url}`)
+  console.log(`\n  release page: https://github.com/${owner}/${name}/releases/tag/${tag}`)
+  process.exit(0)
+}
+
 // ---- publish ---------------------------------------------------------------
 
 let releaseExists = true
@@ -285,10 +327,25 @@ writeFileSync(sumsPath, `${lines.join('\n')}\n`)
 step(`uploading ${uploads.length + 1} assets`)
 gh(['release', 'upload', tag, ...uploads, sumsPath, '--clobber'], { inherit: true })
 
-step('done')
-for (const entry of urls) console.log(`  ${entry.name}\n    ${entry.url}`)
-console.log(`  SHA256SUMS.txt\n    ${downloadUrl('SHA256SUMS.txt')}`)
-console.log(`\n  release page: https://github.com/${owner}/${name}/releases/tag/${tag}`)
+const releasePage = `https://github.com/${owner}/${name}/releases/tag/${tag}`
+const allUrls = [...urls, { name: 'SHA256SUMS.txt', url: downloadUrl('SHA256SUMS.txt') }]
 
-if (keep) console.log(`  artifacts kept in ${workDir}`)
+step('done')
+for (const entry of allUrls) console.log(`  ${entry.name}\n    ${entry.url}`)
+console.log(`\n  release page: ${releasePage}`)
+
+if (summaryFile) {
+  const rows = allUrls
+    .map(
+      (entry) =>
+        `| [${entry.name}](${entry.url}) | ${humanSize(statSync(join(workDir, entry.name)).size)} |`,
+    )
+    .join('\n')
+  appendFileSync(
+    summaryFile,
+    `\n## Release ${tag}\n\n${releasePage}\n\n| Asset | Size |\n| --- | --- |\n${rows}\n`,
+  )
+}
+
+if (keep || fromDir) console.log(`  artifacts in ${workDir}`)
 else rmSync(workDir, { recursive: true, force: true })

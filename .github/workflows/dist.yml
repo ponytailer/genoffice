@@ -9,9 +9,11 @@ name: Dist (macOS + Windows)
 #   * git tag push (v0.12.1) — the tag name supplies the version
 #   * gh workflow run dist.yml -f version=0.12.1
 #
-# Download the result from the run page: Artifacts → mac-* / win-*.
-# Nothing is published anywhere: electron-builder only publishes when
-# GENOFFICE_UPDATE_URL is set, which this workflow does not do.
+# Outcome: the installers land as run artifacts (Artifacts → mac-* / win-*), and a
+# tag build additionally publishes a GitHub Release for that tag with the same
+# files plus SHA256SUMS.txt, listing the download links on the run page.
+# electron-builder itself never publishes: GENOFFICE_UPDATE_URL only affects the
+# feed URL baked into the app, and packaging always runs with --publish never.
 
 on:
   workflow_dispatch:
@@ -274,3 +276,36 @@ jobs:
             apps/shell/release/*.yml
           if-no-files-found: warn
           retention-days: 14
+
+  release:
+    # Tag builds publish; a manual run leaves its artifacts for a human to fetch
+    # (deleting or replacing a release is not something a dispatch should do).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [mac, win]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # gh release create/upload needs write access; the workflow default is read
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # merge-multiple flattens both platform artifacts into one directory, which
+      # is the same layout a developer gets from `gh run download`.
+      - name: Collect installers
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
+        with:
+          path: dist-assets
+          merge-multiple: true
+
+      # The very script a developer runs locally (`npm run release`), so the
+      # release layout, the asset filter and the link list have one owner.
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          node scripts/release-gh.mjs \
+            --tag "$GITHUB_REF_NAME" \
+            --from dist-assets \
+            --summary "$GITHUB_STEP_SUMMARY"

@@ -67,7 +67,6 @@ async function renderModal(
   window.aiOffice = {
     getTheme: async () => 'system',
     getDefaultSaveDir: async () => '',
-    getAnalyticsEnabled: async () => true,
     getAutoSaveDefault: async () => ({ on: false, updatedAt: 0 }),
     getAiPanelPrefs: async () => ({ fontSize: 'default', spellcheck: true }),
     getUpdateChannel: async () => 'stable',

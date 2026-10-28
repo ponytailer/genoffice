@@ -19,7 +19,6 @@ Tiga pilihan ialah Cerah, Gelap, dan Ikut Sistem. Mod Ikut Sistem mengikut rupa 
 
 ## Umum
 
-- **Hantar statistik penggunaan tanpa nama** — diaktifkan secara lalai. Menggunakan Google Analytics 4 dan menghantar IP awam serta metadata pengangkutan anda; kandungan dokumen dan nama fail tidak pernah dikumpulkan, dan setiap peristiwa hanya membawa satu jenis seperti "membuka .docx". Anda boleh mematikannya di sini pada bila-bila masa.
 - **Kedudukan bar sisi AI** (kiri atau kanan), **Saiz teks panel AI** dan **Semakan ejaan dalam sembang AI**.
 - **Buka panel AI dalam dokumen baharu** — dimatikan, dokumen baharu bermula dengan panel tertutup, sekali klik sahaja.
 - **Simpan automatik semua dokumen** membolehkan AutoSave secara lalai dalam setiap editor; anda masih boleh mematikannya untuk satu tetingkap sahaja.

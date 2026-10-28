@@ -19,7 +19,6 @@ Claro / Escuro / Seguir o Sistema. O modo Seguir o Sistema acompanha o aspeto do
 
 ## Geral
 
-- **Enviar estatísticas de uso anônimas** — ativado por predefinição. Usa o Google Analytics 4 e envia o seu IP público e metadados de transporte; o conteúdo dos documentos e os nomes de ficheiros nunca são recolhidos, e cada evento transporta apenas um tipo como «aberto um .docx». Pode desativá-lo aqui a qualquer momento.
 - **Posição da barra lateral de IA** (esquerda ou direita), **Tamanho do texto do painel de IA** e **Verificação ortográfica no chat de IA**.
 - **Abrir o painel de IA em novos documentos** — desativado, um novo documento começa com o painel recolhido, a um clique de distância.
 - **Salvar automaticamente todos os documentos** ativa a gravação automática por predefinição em todos os editores; continua a poder desativá-la para uma janela.

@@ -19,7 +19,6 @@ Clair / Sombre / Suivre le système. Suivre le système suit l’apparence de l�
 
 ## Général
 
-- **Envoyer des statistiques d'utilisation anonymes** — activé par défaut. Utilise Google Analytics 4 et envoie votre adresse IP publique et les métadonnées de transport ; le contenu des documents et les noms de fichiers ne sont jamais collectés, et chaque événement ne porte qu'un type comme « ouverture d'un .docx ». Vous pouvez le désactiver ici à tout moment.
 - **Position de la barre latérale IA** (à gauche ou à droite), **Taille du texte du panneau IA** et **Correction orthographique dans le chat IA**.
 - **Ouvrir le panneau IA dans les nouveaux documents** — désactivé, un nouveau document démarre avec le panneau replié, à un clic de là.
 - **Enregistrer automatiquement tous les documents** active l'enregistrement automatique par défaut dans tous les éditeurs ; vous pouvez toujours le désactiver pour une fenêtre.

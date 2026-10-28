@@ -618,12 +618,12 @@ via **Instellingen → Integraties**. Zie
 <details>
 <summary><b>Verzamelt GenOffice gegevens?</b></summary>
 
-De officiële, kant-en-klare builds versturen standaard beperkte
-gebruiksanalyse, en je kunt rapportage op elk moment uitschakelen onder
-Settings → General. Analytics verstuurt nooit documentinhoud, bestandsnamen,
-bestandspaden, accountidentiteit of e-mailadressen. Zie
-[GenOffice Privacy](../../PRIVACY.md) voor de volledige lijst van events en
-gegevens die worden gedeeld.
+Nee. Deze build verstuurt helemaal geen gebruiksanalyse: er is geen
+meet-endpoint, geen installatie-identificatie en geen eventstream, en de
+instellingen hebben geen schakelaar omdat er niets valt uit te zetten.
+Instellingen, recente bestanden en gecachte AI-metadata blijven in een lokale
+configuratiemap staan. Zie [GenOffice Privacy](../../PRIVACY.md) voor de
+volledige toelichting over netwerkgedrag.
 
 </details>
 

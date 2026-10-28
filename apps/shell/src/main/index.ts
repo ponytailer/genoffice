@@ -107,15 +107,6 @@ import { createDefaultAppService, execFileRunner } from './default-app'
 import { registerIntegrationsIpc } from './integrations-ipc'
 import { makeUserCliRunner, registerUserSkillsIpc } from './user-cli'
 import {
-  ANALYTICS_ENABLED_KEY,
-  analyticsEnabledFrom,
-  createAnalytics,
-  ensureAnalyticsClientState,
-  extractPackagedAnalyticsKeys,
-  markAnalyticsFirstLaunchSent,
-} from './analytics'
-import type { Analytics, AnalyticsKeys } from './analytics'
-import {
   LAST_RUN_VERSION_KEY,
   STAR_PROMPT_KEY,
   asStarPromptState,
@@ -721,73 +712,6 @@ function currentAiPanelPrefs(): AiPanelPrefs {
     showAiSidebar: saved.aiPanelShowSidebar,
   })
   return cachedAiPanelPrefs
-}
-
-// ---- anonymous usage analytics (see src/main/analytics.ts) ----
-// Stays a no-op until initAnalytics() runs at startup; keyless builds
-// (source/forks) keep the no-op forever, so every track() call is safe.
-
-let analytics: Analytics = { active: false, track: () => {} }
-
-let cachedAnalyticsEnabled: boolean | null = null
-
-function analyticsEnabled(): boolean {
-  cachedAnalyticsEnabled ??= analyticsEnabledFrom(readAppSettings(APP_SETTINGS_PATH()))
-  return cachedAnalyticsEnabled
-}
-
-function resolveAnalyticsKeys(): AnalyticsKeys | null {
-  // Only packaged extraMetadata is authoritative. Source/dev runs never read
-  // runtime credentials and therefore remain a strict no-op.
-  if (!app.isPackaged) return null
-  try {
-    return extractPackagedAnalyticsKeys(
-      JSON.parse(readFileSync(join(app.getAppPath(), 'package.json'), 'utf8')),
-      app.isPackaged,
-    )
-  } catch {
-    return null
-  }
-}
-
-function persistAnalyticsPreference(enabled: boolean): boolean {
-  const previous = cachedAnalyticsEnabled
-  // Change the in-memory gate before touching disk. The synchronous atomic
-  // write prevents another event from being handled in between.
-  cachedAnalyticsEnabled = enabled
-  try {
-    writeAppSettings(APP_SETTINGS_PATH(), { [ANALYTICS_ENABLED_KEY]: enabled })
-    return true
-  } catch (error) {
-    cachedAnalyticsEnabled = previous
-    throw error
-  }
-}
-
-function initAnalytics(): void {
-  try {
-    let clientState: ReturnType<typeof ensureAnalyticsClientState> | null = null
-    const getClientState = () => (clientState ??= ensureAnalyticsClientState(APP_SETTINGS_PATH()))
-    analytics = createAnalytics({
-      keys: resolveAnalyticsKeys(),
-      getClientId: () => getClientState().clientId,
-      isEnabled: analyticsEnabled,
-      shouldTrackFirstLaunch: () => getClientState().firstLaunchPending,
-      onFirstLaunchSent: () => markAnalyticsFirstLaunchSent(APP_SETTINGS_PATH()),
-      // Country-only approximation from OS regional settings. This avoids an
-      // IP lookup while populating GA4's built-in Country dimension.
-      getCountryCode: () => app.getLocaleCountryCode(),
-      // evaluated per event: ui_lang follows live language switches
-      baseParams: () => ({
-        app_version: app.getVersion(),
-        platform: process.platform,
-        os_version: process.getSystemVersion(),
-        ui_lang: currentLang(),
-      }),
-    })
-  } catch {
-    // analytics must never block startup
-  }
 }
 
 // ---- first-run onboarding ----
@@ -4455,8 +4379,6 @@ function openDocumentPath(filePath: string): boolean {
   const opened = routeDocumentPath(filePath)
   if (opened) {
     recordStarPromptDocOpen()
-    // extension only — never the file name or path
-    analytics.track('file_open', { ext: extname(filePath).slice(1).toLowerCase() })
   }
   return opened
 }
@@ -4576,16 +4498,12 @@ async function newSheetTab(recoverAs?: string): Promise<void> {
     startQueuedWorkbookNudge()
     // no recent-file entry yet: there is no user-visible file until it is saved
     recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'xlsx' })
   } catch (err) {
     console.warn('[shell] temp workbook create failed, writing to the default folder:', err)
     try {
       await atomicWriteFile(suggestedPath, await blankXlsxBuffer())
       markSheetsUntitledPath(suggestedPath)
-      // route directly (not via openDocumentPath) so creating a sheet emits
-      // only file_new — the file_open event is reserved for opening existing files
       if (routeDocumentPath(suggestedPath)) recordStarPromptDocOpen()
-      analytics.track('file_new', { kind: 'xlsx' })
     } catch (fallbackErr) {
       console.warn(
         '[shell] blank workbook create failed, opening in-memory blank tab:',
@@ -4616,7 +4534,6 @@ function newDocTab(): void {
     bindPendingDir('doc', tabManager?.openDocsTab(undefined, { newBlank: true }))
     // creating a document is as much a value moment as opening one
     recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'docx' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4629,7 +4546,6 @@ function openBlankDocsTabForMcp(): number {
   const view = tabManager.docsTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new document tab could not be opened')
   recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'docx' })
   return view.webContents.id
 }
 
@@ -4663,7 +4579,6 @@ async function openBlankSheetsTabForMcp(): Promise<number> {
   // cold start and leave the tab sitting on a blank in-memory workbook.
   startQueuedWorkbookNudge()
   recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'xlsx' })
   return view.webContents.id
 }
 
@@ -4717,7 +4632,6 @@ function openBlankSlidesTabForMcp(): number {
   const view = tabManager.slidesTabs().find((t) => t.id === tabId)
   if (!view) throw new Error('the new presentation tab could not be opened')
   recordStarPromptDocOpen()
-  analytics.track('file_new', { kind: 'pptx' })
   return view.webContents.id
 }
 
@@ -4725,7 +4639,6 @@ function newSlideTab(): void {
   try {
     bindPendingDir('slide', tabManager?.openSlidesTab())
     recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'pptx' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4735,7 +4648,6 @@ function newMarkdownTab(): void {
   try {
     bindPendingDir('markdown', tabManager?.openMarkdownTab())
     recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'md' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4745,7 +4657,6 @@ function newHtmlTab(): void {
   try {
     bindPendingDir('html', tabManager?.openHtmlTab())
     recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'html' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4762,10 +4673,7 @@ async function newPdfTab(): Promise<void> {
     await atomicWriteFile(filePath, await blankPdfBuffer())
     // Opt the file into content-derived auto-naming on its first save
     markPdfUntitledPath(filePath)
-    // route directly (not via openDocumentPath) so creating a pdf emits only
-    // file_new and counts one doc-open — same as the blank workbook above
     if (routeDocumentPath(filePath)) recordStarPromptDocOpen()
-    analytics.track('file_new', { kind: 'pdf' })
   } catch (err) {
     surfaceNewTabError(err)
   }
@@ -4824,7 +4732,6 @@ function registerHomeIpc(): void {
   // kept main-side so the "open manually" rescue never opens a renderer-supplied URL
   let pendingLoginUrl = ''
   ipcMain.handle(HOME_CHANNELS.accountLogin, async (event) => {
-    analytics.track('login_click')
     const sender = event.sender
     pendingLoginUrl = ''
     const send = (payload: AccountLoginEvent) => {
@@ -4834,7 +4741,6 @@ function registerHomeIpc(): void {
     return startPlatformLogin((progress) => {
       if (progress.url) pendingLoginUrl = progress.url
       if (progress.phase === 'success') {
-        analytics.track('login_success')
         // a new identity brings a new model list and key: never reuse the old answer
         clearPlatformAiCache()
         clearPlatformCredential()
@@ -5389,13 +5295,6 @@ function registerHomeIpc(): void {
     revealMcpLogFile()
     const logPath = mcpLogFilePath()
     if (logPath) shell.showItemInFolder(logPath)
-  })
-
-  ipcMain.handle(HOME_CHANNELS.getAnalyticsEnabled, (): boolean => analyticsEnabled())
-
-  ipcMain.handle(HOME_CHANNELS.setAnalyticsEnabled, (_event, enabled: unknown): boolean => {
-    if (typeof enabled !== 'boolean') return false
-    return persistAnalyticsPreference(enabled)
   })
 
   ipcMain.handle(HOME_CHANNELS.getAiPanelPrefs, (): AiPanelPrefs => currentAiPanelPrefs())
@@ -7219,8 +7118,6 @@ app.whenReady().then(async () => {
   }
   // off the startup path: a symlink / registry write nobody is waiting for
   setTimeout(() => installCliLinkBestEffort(APP_SETTINGS_PATH()), 3000)
-  initAnalytics()
-  analytics.track('app_launch')
   startSheetsCaptureServer()
   // Register the docs renderer bridge listeners before the MCP server can take
   // a visible-editing request.

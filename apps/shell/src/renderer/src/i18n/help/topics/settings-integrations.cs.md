@@ -19,7 +19,6 @@ Světlý / Tmavý / Podle systému. Volba Podle systému sleduje vzhled operačn
 
 ## Obecné
 
-- **Odesílat anonymní statistiky používání** — ve výchozím stavu zapnuto. Používá Google Analytics 4 a odesílá vaši veřejnou IP adresu a přenosová metadata; obsah dokumentů ani názvy souborů se nikdy neshromažďují a každá událost nese jen typ, například „otevřen soubor .docx“. Kdykoli to zde vypnete.
 - **Pozice postranního panelu AI** (vlevo nebo vpravo), **Velikost textu panelu AI** a **Kontrola pravopisu v chatu AI**.
 - **Otevírat panel AI v nových dokumentech** — vypnuto, nový dokument začíná se složeným panelem, na jedno kliknutí.
 - **Automaticky ukládat všechny dokumenty** zapne ve výchozím stavu automatické ukládání v každém editoru; pro jedno okno ho můžete i nadále vypnout.

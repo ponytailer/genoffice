@@ -19,7 +19,6 @@ Claro / Oscuro / Seguir el sistema. «Seguir el sistema» sigue la apariencia de
 
 ## General
 
-- **Enviar estadísticas de uso anónimas** — activado de forma predeterminada. Usa Google Analytics 4 y envía tu IP pública y metadatos de transporte; nunca se recopilan los contenidos de los documentos ni los nombres de archivo, y cada evento lleva solo un tipo como «se abrió un .docx». Puedes desactivarlo aquí en cualquier momento.
 - **Posición de la barra lateral de IA** (izquierda o derecha), **Tamaño del texto del panel de IA** y **Corrección ortográfica en el chat de IA**.
 - **Abrir el panel de IA en documentos nuevos** — desactivado, un documento nuevo empieza con el panel plegado, a un clic de distancia.
 - **Guardar automáticamente todos los documentos** activa el guardado automático de forma predeterminada en todos los editores; todavía puedes desactivarlo para una ventana.

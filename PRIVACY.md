@@ -1,6 +1,6 @@
 # GenOffice Privacy
 
-Last updated: August 26, 2026
+Last updated: October 28, 2026
 
 GenOffice opens, edits, and saves documents locally. Document editing does not
 upload files to GenOffice. AI features require a network connection and send
@@ -8,63 +8,27 @@ requests only when you use them.
 
 ## Usage analytics
 
-Usage analytics is enabled by default in packaged official builds, including
-the initial app launch before the onboarding notice is shown. Onboarding
-explains what is collected and where to turn it off.
+This build sends no usage analytics. There is no measurement endpoint, no
+install identifier, no session identifier and no event stream: nothing about
+how you use the app leaves the machine, and Settings carries no reporting
+switch because there is nothing to switch off.
 
-You can disable reporting at any time under **Settings → General → Send
-anonymous usage statistics**. An explicit opt-out is remembered and stops all
-subsequent analytics events.
+Older packaged releases shipped opt-out Google Analytics 4 reporting. It was
+removed together with the switch that controlled it, so upgrading needs no
+action from you.
 
-### Events and parameters
+## Network requests
 
-When enabled, the app sends these events:
+The only outbound requests are the ones the app needs to do what you asked:
 
-- `install_first_launch` — marks the first analytics-enabled use of a newly
-  assigned anonymous `client_id`; used for retention cohorts
-- `app_launch` — no event-specific parameter
-- `file_open` — `ext`, the file extension such as `docx` or `xlsx`
-- `file_new` — `kind`, one of `docx`, `xlsx`, `pptx`, `md`, or `pdf`
-- `login_click` — no event-specific parameter
-- `login_success` — no event-specific parameter
+- **AI features** send your prompt (and any text or attachment you explicitly
+  include) to the model endpoint you are signed in to or configured yourself.
+  Nothing is sent while you are not using them.
+- **Update checks** fetch the release manifest (`latest*.yml`) of this build's
+  update channel when one is configured, and download an installer only after
+  you accept it. A build without a configured channel makes no such request.
 
-Every event includes:
+## Data collected
 
-- `app_version`
-- `platform`
-- `os_version`
-- `ui_lang`
-- a per-process `session_id` derived from the process start time
-- `engagement_time_msec` with the fixed value `100`
-
-When available, the payload also includes `country_id`, the two-letter country
-code from the operating system's regional locale. This can differ from the
-user's physical location.
-
-The Google Analytics 4 payload also uses a random install UUID as `client_id`.
-The country code is sent through GA4's country-only `user_location` field; the
-app does not send a city or region. Neither identifier is a Genspark account or
-email address.
-
-## Network information
-
-Events are sent to Google Analytics 4 using the Measurement Protocol over
-HTTPS. As the HTTPS recipient, Google necessarily sees the connection's public
-IP address and transport metadata, and may use them for coarse geolocation and
-security or spam-abuse processing. GenOffice does not add an IP address to the
-event payload.
-
-## Data not collected by analytics
-
-GenOffice analytics never sends:
-
-- document content
-- file names
-- file paths
-- Genspark account identity
-- email addresses
-
-The analytics metadata is injected only into packaged official builds and is
-not part of this repository. Source builds and forks without that packaged
-metadata install a no-op tracker and send no usage analytics; all features work
-the same.
+None. The app keeps its settings, recent-file list and any cached AI metadata
+in a local configuration directory on your machine, and never transmits them.

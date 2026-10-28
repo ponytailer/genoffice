@@ -19,7 +19,6 @@ Hell / Dunkel / System folgen. „System folgen“ richtet sich nach dem Erschei
 
 ## Allgemein
 
-- **Anonyme Nutzungsstatistiken senden** — standardmäßig aktiviert. Verwendet Google Analytics 4 und sendet Ihre öffentliche IP-Adresse und Transportmetadaten; Dokumentinhalte und Dateinamen werden nie erhoben, und jedes Ereignis trägt nur einen Typ wie „eine .docx geöffnet“. Sie können das hier jederzeit abschalten.
 - **Position der KI-Seitenleiste** (links oder rechts), **Textgröße im KI-Bereich** und **Rechtschreibprüfung im KI-Chat**.
 - **KI-Panel in neuen Dokumenten öffnen** — aus, ein neues Dokument startet mit eingeklapptem Panel, einen Klick entfernt.
 - **Alle Dokumente automatisch speichern** schaltet AutoSave in jedem Editor standardmäßig ein; für ein einzelnes Fenster können Sie es weiterhin abschalten.

@@ -19,7 +19,6 @@ Terang / Gelap / Ikuti Sistem. Mode Ikuti Sistem mengikuti tampilan sistem opera
 
 ## Umum
 
-- **Kirim statistik penggunaan anonim** — aktif secara default. Menggunakan Google Analytics 4 dan mengirim IP publik serta metadata transport Anda; isi dokumen dan nama file tidak pernah dikumpulkan, dan setiap peristiwa hanya membawa jenis seperti "membuka .docx". Anda bisa mematikannya di sini kapan saja.
 - **Posisi bilah samping AI** (kiri atau kanan), **Ukuran teks panel AI** dan **Pemeriksaan ejaan di obrolan AI**.
 - **Buka panel AI di dokumen baru** — nonaktif, dokumen baru dimulai dengan panel tertutup, sekali klik lagi.
 - **Simpan otomatis semua dokumen** menyalakan AutoSave secara default di setiap editor; Anda tetap bisa mematikannya untuk satu jendela.

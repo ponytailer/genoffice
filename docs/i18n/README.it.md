@@ -620,12 +620,12 @@ Gemini CLI, GitHub Copilot, OpenCode e Windsurf a usarla; installalo da
 <details>
 <summary><b>GenOffice raccoglie dati?</b></summary>
 
-Le build ufficiali inviano per impostazione predefinita analytics d'uso
-limitate, e puoi disattivare l'invio in qualsiasi momento in Settings →
-General. Le analytics non inviano mai il contenuto dei documenti, i nomi dei
-file, i percorsi dei file, l'identità dell'account o gli indirizzi email.
-Consulta [GenOffice Privacy](../../PRIVACY.md) per l'elenco completo di
-eventi e dati raccolti.
+No. Questa build non invia alcuna analytics d'uso: non esiste un endpoint di
+misurazione, un identificatore di installazione o un flusso di eventi, e le
+impostazioni non hanno un interruttore perché non c'è nulla da disattivare.
+Impostazioni, file recenti e metadati AI in cache restano in una cartella di
+configurazione locale. Consulta [GenOffice Privacy](../../PRIVACY.md) per i
+dettagli sul comportamento di rete.
 
 </details>
 

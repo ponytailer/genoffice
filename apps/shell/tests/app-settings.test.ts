@@ -85,13 +85,13 @@ describe('writeAppSetting', () => {
 })
 
 describe('writeAppSettings', () => {
-  it('persists onboarding completion and analytics choice together', () => {
+  it('persists several keys at once and keeps the existing ones', () => {
     writeFileSync(settingsPath, JSON.stringify({ language: 'en' }))
-    writeAppSettings(settingsPath, { onboardingSeen: true, analyticsEnabled: false })
+    writeAppSettings(settingsPath, { onboardingSeen: true, updateChannel: 'beta' })
     expect(JSON.parse(readFileSync(settingsPath, 'utf8'))).toEqual({
       language: 'en',
       onboardingSeen: true,
-      analyticsEnabled: false,
+      updateChannel: 'beta',
     })
   })
 })

@@ -19,7 +19,6 @@ Chiaro / Scuro / Segui il sistema. L'opzione Segui il sistema segue l'aspetto de
 
 ## Generale
 
-- **Invia statistiche di utilizzo anonime** — attivo per impostazione predefinita. Utilizza Google Analytics 4 e invia il tuo IP pubblico e i metadati di trasporto; i contenuti dei documenti e i nomi dei file non vengono mai raccolti e ogni evento porta solo un tipo come «aperto un .docx». Puoi disattivarlo qui in qualsiasi momento.
 - **Posizione della barra laterale IA** (sinistra o destra), **Dimensione del testo del pannello IA** e **Controllo ortografico nella chat IA**.
 - **Apri il pannello IA nei nuovi documenti** — disattivato, un nuovo documento si apre con il pannello richiuso, a un clic di distanza.
 - **Salva automaticamente tutti i documenti** attiva il salvataggio automatico per impostazione predefinita in ogni editor; puoi comunque disattivarlo per una singola finestra.

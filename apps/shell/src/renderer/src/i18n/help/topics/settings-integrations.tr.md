@@ -19,7 +19,6 @@ Açık / Koyu / Sistem. Sistem, işletim sisteminin görünümünü izler ve dü
 
 ## Genel
 
-- **Anonim kullanım istatistikleri gönder** — varsayılan olarak açık. Google Analytics 4 kullanır ve genel IP adresinizi ile aktarım meta verilerini gönderir; belge içerikleri ve dosya adları asla toplanmaz ve her olay yalnızca ".docx açıldı" gibi bir tür taşır. İstediğiniz zaman buradan kapatın.
 - **AI kenar çubuğu konumu** (sol veya sağ), **AI paneli metin boyutu** ve **AI sohbetinde yazım denetimi**.
 - **Yeni belgelerde AI panelini aç** — kapalıyken yeni bir belge, panel daraltılmış ve tek tık uzakta olarak başlar.
 - **Tüm belgeleri otomatik kaydet** her düzenleyicide Otomatik Kaydet'i varsayılan olarak açar; tek bir pencere için yine de kapatabilirsiniz.

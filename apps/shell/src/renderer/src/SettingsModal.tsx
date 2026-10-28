@@ -105,11 +105,6 @@ const AI_FONT_SIZE_OPTIONS = [
   { value: 'custom', labelKey: 'aiFontSizeCustom' },
 ] as const satisfies readonly { value: AiFontSize; labelKey: StringKey }[]
 
-const CHANNEL_OPTIONS = [
-  { value: 'stable', labelKey: 'channelStable' },
-  { value: 'beta', labelKey: 'channelBeta' },
-] as const satisfies readonly { value: 'stable' | 'beta'; labelKey: StringKey }[]
-
 /** px stepper for the custom AI panel text size; in-range values apply live,
  * out-of-range or partial input is clamped on blur */
 function CustomFontSizeInput({
@@ -1158,18 +1153,14 @@ export function SettingsModal({
   const [theme, setTheme] = useState<UiTheme>('system')
   const [docTheme, setDocTheme] = useState<DocTheme>('follow')
   const [saveDir, setSaveDir] = useState('')
-  const [analyticsOn, setAnalyticsOn] = useState(true)
-  const [analyticsSaving, setAnalyticsSaving] = useState(false)
   const [autoSaveOn, setAutoSaveOn] = useState(false)
   const [tabSleepOn, setTabSleepOn] = useState(true)
   const [restoreSessionOn, setRestoreSessionOn] = useState(false)
-  const [autoUpdateCheckOn, setAutoUpdateCheckOn] = useState(true)
   const [defaultApp, setDefaultApp] = useState<DefaultAppStatus | null>(null)
   const [defaultAppBusy, setDefaultAppBusy] = useState(false)
   const [defaultAppFailed, setDefaultAppFailed] = useState(false)
   const [aiPrefs, setAiPrefs] = useState<AiPanelPrefs>(DEFAULT_AI_PANEL_PREFS)
   const [authorName, setAuthorName] = useState<AuthorNameSetting>({ value: '', fallback: '' })
-  const [channel, setChannel] = useState<'stable' | 'beta'>('stable')
   const [updateState, setUpdateState] = useState<UpdateUiState | null>(null)
 
   useEffect(() => {
@@ -1182,9 +1173,6 @@ export function SettingsModal({
     })
     void window.aiOffice.getDefaultSaveDir?.().then((dir) => {
       if (alive && dir) setSaveDir(dir)
-    })
-    void window.aiOffice.getAnalyticsEnabled?.().then((on) => {
-      if (alive) setAnalyticsOn(on !== false)
     })
     void window.aiOffice.getAutoSaveDefault?.().then((v) => {
       if (alive) setAutoSaveOn(v.on)
@@ -1203,12 +1191,6 @@ export function SettingsModal({
     })
     void window.aiOffice.getAuthorName?.().then((v) => {
       if (alive) setAuthorName(v)
-    })
-    void window.aiOffice.getUpdateChannel?.().then((ch) => {
-      if (alive) setChannel(ch)
-    })
-    void window.aiOffice.getAutoUpdateCheck?.().then((on) => {
-      if (alive) setAutoUpdateCheckOn(on)
     })
     // a rejected invoke (main process not ready, a shell whose preload does not
     // expose the channel) must not surface as an unhandled rejection
@@ -1652,32 +1634,6 @@ export function SettingsModal({
                     }}
                   />
                 </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <div className="set-field-stack">
-                      <div className="set-field-label">{t('setAnalytics')}</div>
-                      <div className="set-field-desc">{t('setAnalyticsDesc')}</div>
-                    </div>
-                  </div>
-                  <button
-                    className="set-switch"
-                    role="switch"
-                    aria-checked={analyticsOn}
-                    aria-label={t('setAnalytics')}
-                    disabled={analyticsSaving}
-                    onClick={() => {
-                      const next = !analyticsOn
-                      setAnalyticsSaving(true)
-                      void window.aiOffice
-                        .setAnalyticsEnabled(next)
-                        .then((persisted) => {
-                          if (persisted) setAnalyticsOn(next)
-                        })
-                        .catch(() => {})
-                        .finally(() => setAnalyticsSaving(false))
-                    }}
-                  />
-                </div>
                 {updateState && (
                   <div className="set-field">
                     <div className="set-field-text">
@@ -1698,44 +1654,6 @@ export function SettingsModal({
                     </button>
                   </div>
                 )}
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <label className="set-field-label">{t('updateChannel')}</label>
-                  </div>
-                  <Dropdown
-                    className="set-dd"
-                    value={channel}
-                    ariaLabel={t('updateChannel')}
-                    options={CHANNEL_OPTIONS.map((opt) => ({
-                      value: opt.value,
-                      label: t(opt.labelKey),
-                    }))}
-                    onPick={(v) => {
-                      const next = v === 'beta' ? 'beta' : 'stable'
-                      setChannel(next)
-                      void window.aiOffice.setUpdateChannel(next)
-                    }}
-                  />
-                </div>
-                <div className="set-field">
-                  <div className="set-field-text">
-                    <div className="set-field-stack">
-                      <div className="set-field-label">{t('setAutoUpdateCheck')}</div>
-                      <div className="set-field-desc">{t('setAutoUpdateCheckDesc')}</div>
-                    </div>
-                  </div>
-                  <button
-                    className="set-switch"
-                    role="switch"
-                    aria-checked={autoUpdateCheckOn}
-                    aria-label={t('setAutoUpdateCheck')}
-                    onClick={() => {
-                      const next = !autoUpdateCheckOn
-                      setAutoUpdateCheckOn(next)
-                      void window.aiOffice.setAutoUpdateCheck?.(next).catch(() => {})
-                    }}
-                  />
-                </div>
               </>
             )}
             {section === 'integrations' && (

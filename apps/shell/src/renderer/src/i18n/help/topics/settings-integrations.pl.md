@@ -19,7 +19,6 @@ Jasny / Ciemny / Zgodnie z systemem. Opcja Zgodnie z systemem podąża za wyglą
 
 ## Ogólne
 
-- **Wysyłaj anonimowe statystyki użytkowania** — domyślnie włączone. Korzysta z Google Analytics 4 i wysyła publiczny adres IP i metadane transportowe; treść dokumentów ani nazwy plików nigdy nie są zbierane, a każde zdarzenie niesie tylko typ, na przykład „otwarto .docx”. W każdej chwili można je tu wyłączyć.
 - **Położenie panelu bocznego AI** (po lewej lub po prawej), **Rozmiar tekstu panelu AI** i **Sprawdzanie pisowni w czacie AI**.
 - **Otwieraj panel AI w nowych dokumentach** — wyłączone, nowy dokument zaczyna się ze zwiniętym panelem, jedno kliknięcie stąd.
 - **Automatycznie zapisuj wszystkie dokumenty** włącza AutoSave domyślnie w każdym edytorze; nadal można je wyłączyć dla jednego okna.

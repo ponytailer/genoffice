@@ -692,11 +692,11 @@ to use it; install it from **Settings → Integrations**. See
 <details>
 <summary><b>Does GenOffice collect any data?</b></summary>
 
-Official packaged builds send limited usage analytics by default, and you can
-disable reporting at any time under Settings → General. Analytics never sends
-document content, file names, file paths, account identity or email
-addresses. See [GenOffice Privacy](PRIVACY.md) for the complete event and
-data disclosures.
+No. This build sends no usage analytics at all: there is no reporting
+endpoint, no install identifier and no event stream, and Settings has no
+reporting switch because there is nothing to switch off. Settings, recent
+files and cached AI metadata stay in a local configuration directory. See
+[GenOffice Privacy](PRIVACY.md) for the full network-behaviour notes.
 
 </details>
 

@@ -1,22 +1,19 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { INSTALL_FIRST_LAUNCH_EVENT } from '../src/main/analytics'
 
-describe('PRIVACY.md analytics disclosure', () => {
-  it('lists every event emitted by the shell main process', () => {
+/**
+ * This build reports nothing. The test is the tripwire for a silent
+ * reintroduction: the moment the shell emits a usage event again, PRIVACY.md
+ * and the Settings disclosure have to be revisited, so the assertion fails
+ * until both sides are updated together.
+ */
+describe('PRIVACY.md telemetry disclosure', () => {
+  it('stays aligned with a shell that reports nothing', () => {
     const source = readFileSync(join(__dirname, '../src/main/index.ts'), 'utf8')
     const privacy = readFileSync(join(__dirname, '../../../PRIVACY.md'), 'utf8')
-    const emitted = new Set([
-      ...[...source.matchAll(/\banalytics\.track\(\s*['"]([a-z][a-z0-9_]*)['"]/g)].map(
-        (match) => match[1],
-      ),
-      INSTALL_FIRST_LAUNCH_EVENT,
-    ])
-    const documented = new Set(
-      [...privacy.matchAll(/^- `([a-z][a-z0-9_]*)` —/gm)].map((match) => match[1]),
-    )
 
-    expect([...documented].sort()).toEqual([...emitted].sort())
+    expect(source).not.toMatch(/\banalytics\.track\(/)
+    expect(privacy).toMatch(/sends no usage analytics/i)
   })
 })

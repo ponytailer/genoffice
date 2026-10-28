@@ -234,9 +234,6 @@ export const strings = {
     tabSleeping: '已休眠',
     setAutoSave: '所有文档自动保存',
     setAutoSaveDesc: '在每个编辑器中默认开启自动保存，仍可在单个窗口中关闭。',
-    setAnalytics: '发送匿名使用统计',
-    setAnalyticsDesc:
-      '该功能默认开启，可随时在“设置 → 常规”中关闭。使用 Google Analytics 4；Google 会接收您的公网 IP 地址和传输元数据，但绝不收集文档内容或文件名。',
     setSearchRerank: 'Jev 搜索重排',
     setSearchRerankDesc:
       '把本机搜索的前 20 条命中片段发给 TypeSafe 的 Jev 模型，按相关性重新排序。默认关闭；开启后命中片段会离开本机。',
@@ -766,9 +763,6 @@ export const strings = {
     setAutoSave: 'Auto-save all documents',
     setAutoSaveDesc:
       'Turn on AutoSave by default in every editor. You can still switch it off for a single window.',
-    setAnalytics: 'Send anonymous usage statistics',
-    setAnalyticsDesc:
-      'Enabled by default and can be turned off anytime in Settings → General. Uses Google Analytics 4; Google receives your public IP address and transport metadata, but document contents and file names are never collected.',
     setSearchRerank: 'Jev search reranking',
     setSearchRerankDesc:
       "Sends the top 20 local hits' excerpts to TypeSafe's Jev model and reorders them by relevance. Off by default; when on, excerpts leave this device.",
@@ -1313,9 +1307,6 @@ export const strings = {
     setAutoSave: 'Tự động lưu tất cả tài liệu',
     setAutoSaveDesc:
       'Bật Tự động lưu theo mặc định trong mọi trình soạn thảo. Bạn vẫn có thể tắt tính năng này cho từng cửa sổ riêng lẻ.',
-    setAnalytics: 'Gửi số liệu thống kê sử dụng ẩn danh',
-    setAnalyticsDesc:
-      'Được bật theo mặc định và có thể tắt bất cứ lúc nào trong Cài đặt → Chung. Sử dụng Google Analytics 4; Google nhận địa chỉ IP công khai và siêu dữ liệu truyền tải của bạn, nhưng nội dung tài liệu và tên tệp không bao giờ bị thu thập.',
     setSearchRerank: 'Sắp xếp lại kết quả tìm kiếm Jev',
     setSearchRerankDesc:
       'Gửi đoạn trích của 20 kết quả hàng đầu cục bộ tới mô hình Jev của TypeSafe và sắp xếp lại theo mức độ liên quan. Tắt theo mặc định; khi bật, các đoạn trích sẽ được gửi ra ngoài thiết bị này.',
@@ -1864,9 +1855,6 @@ export const strings = {
     setAutoSave: 'Tüm belgeleri otomatik kaydet',
     setAutoSaveDesc:
       'Her düzenleyicide Otomatik Kaydet’i varsayılan olarak açar. Tek bir pencere için yine de kapatabilirsiniz.',
-    setAnalytics: 'Anonim kullanım istatistiklerini gönder',
-    setAnalyticsDesc:
-      'Varsayılan olarak açıktır ve Ayarlar → Genel’den istediğiniz zaman kapatılabilir. Google Analytics 4 kullanır; Google genel IP adresinizi ve aktarım meta verilerini alır, ancak belge içerikleri ve dosya adları hiçbir zaman toplanmaz.',
     setSearchRerank: 'Jev arama yeniden sıralaması',
     setSearchRerankDesc:
       'En iyi 20 yerel sonucun alıntılarını TypeSafe’in Jev modeline gönderir ve ilgililiğe göre yeniden sıralar. Varsayılan olarak kapalıdır; açıkken alıntılar bu cihazdan dışarı çıkar.',
@@ -2428,9 +2416,6 @@ export const strings = {
     setAutoSave: 'すべてのドキュメントを自動保存',
     setAutoSaveDesc:
       'すべてのエディターで自動保存をデフォルトでオンにします。個々のウィンドウでオフにすることもできます。',
-    setAnalytics: '匿名の使用状況統計を送信',
-    setAnalyticsDesc:
-      '既定で有効です。設定 → 一般でいつでも無効にできます。Google Analytics 4 を使用し、Google は公開 IP アドレスと通信メタデータを受け取りますが、文書の内容やファイル名は収集されません。',
     setSearchRerank: 'Jev 検索リランク',
     setSearchRerankDesc:
       'ローカル検索の上位 20 件の抜粋を TypeSafe の Jev モデルに送り、関連度で並べ替えます。既定ではオフ。オンにすると抜粋が端末外に送信されます。',
@@ -2986,9 +2971,6 @@ export const strings = {
     tabSleeping: '절전 중',
     setAutoSave: '모든 문서 자동 저장',
     setAutoSaveDesc: '모든 편집기에서 자동 저장을 기본으로 켭니다. 개별 창에서는 끌 수 있습니다.',
-    setAnalytics: '익명 사용 통계 보내기',
-    setAnalyticsDesc:
-      '기본적으로 켜져 있으며 설정 → 일반에서 언제든 끌 수 있습니다. Google Analytics 4를 사용하며 Google은 공인 IP 주소와 전송 메타데이터를 수신하지만 문서 내용이나 파일 이름은 수집하지 않습니다.',
     setSearchRerank: 'Jev 검색 재정렬',
     setSearchRerankDesc:
       '로컬 검색 상위 20개 결과의 발췌문을 TypeSafe의 Jev 모델로 보내 관련도 순으로 재정렬합니다. 기본은 꺼짐이며, 켜면 발췌문이 기기 밖으로 전송됩니다.',
@@ -3547,9 +3529,6 @@ export const strings = {
     setAutoSave: 'Enregistrer automatiquement tous les documents',
     setAutoSaveDesc:
       "Active l'enregistrement automatique par défaut dans chaque éditeur. Vous pouvez toujours le désactiver pour une fenêtre.",
-    setAnalytics: "Envoyer des statistiques d'utilisation anonymes",
-    setAnalyticsDesc:
-      'Activé par défaut et désactivable dans Paramètres → Général. Utilise Google Analytics 4 ; Google reçoit votre adresse IP publique et les métadonnées de transport, mais jamais le contenu des documents ni les noms de fichiers.',
     setSearchRerank: 'Reclassement Jev',
     setSearchRerankDesc:
       'Envoie les extraits des 20 premiers résultats locaux au modèle Jev de TypeSafe et les réordonne par pertinence. Désactivé par défaut ; une fois activé, les extraits quittent cet appareil.',
@@ -4122,9 +4101,6 @@ export const strings = {
     setAutoSave: 'Alle Dokumente automatisch speichern',
     setAutoSaveDesc:
       'Aktiviert AutoSave standardmäßig in jedem Editor. Für ein einzelnes Fenster kann es weiterhin ausgeschaltet werden.',
-    setAnalytics: 'Anonyme Nutzungsstatistiken senden',
-    setAnalyticsDesc:
-      'Standardmäßig aktiviert und unter Einstellungen → Allgemein deaktivierbar. Verwendet Google Analytics 4; Google erhält Ihre öffentliche IP-Adresse und Transportmetadaten, aber keine Dokumentinhalte oder Dateinamen.',
     setSearchRerank: 'Jev-Neusortierung',
     setSearchRerankDesc:
       'Sendet die Auszüge der 20 besten lokalen Treffer an das Jev-Modell von TypeSafe und sortiert sie nach Relevanz. Standardmäßig aus; wenn aktiv, verlassen Auszüge dieses Gerät.',
@@ -4691,9 +4667,6 @@ export const strings = {
     setAutoSave: 'Guardar automáticamente todos los documentos',
     setAutoSaveDesc:
       'Activa el autoguardado de forma predeterminada en todos los editores. Aún puedes desactivarlo en una ventana concreta.',
-    setAnalytics: 'Enviar estadísticas de uso anónimas',
-    setAnalyticsDesc:
-      'Activado de forma predeterminada y desactivable en Configuración → General. Usa Google Analytics 4; Google recibe tu IP pública y metadatos de transporte, pero nunca el contenido de documentos ni los nombres de archivo.',
     setSearchRerank: 'Reordenación con Jev',
     setSearchRerankDesc:
       'Envía los extractos de los 20 mejores resultados locales al modelo Jev de TypeSafe y los reordena por relevancia. Desactivado por defecto; al activarlo, los extractos salen de este dispositivo.',
@@ -5253,9 +5226,6 @@ export const strings = {
     tabSleeping: 'พักอยู่',
     setAutoSave: 'บันทึกอัตโนมัติทุกเอกสาร',
     setAutoSaveDesc: 'เปิดบันทึกอัตโนมัติเป็นค่าเริ่มต้นในทุกตัวแก้ไข คุณยังปิดได้ในแต่ละหน้าต่าง',
-    setAnalytics: 'ส่งสถิติการใช้งานแบบไม่ระบุตัวตน',
-    setAnalyticsDesc:
-      'เปิดใช้งานเป็นค่าเริ่มต้นและปิดได้ทุกเมื่อใน การตั้งค่า → ทั่วไป ใช้ Google Analytics 4 โดย Google จะได้รับ IP สาธารณะและข้อมูลเมตาการรับส่งข้อมูล แต่จะไม่เก็บเนื้อหาเอกสารหรือชื่อไฟล์',
     setSearchRerank: 'จัดอันดับใหม่ด้วย Jev',
     setSearchRerankDesc:
       'ส่งข้อความตัดตอนของผลลัพธ์ 20 อันดับแรกไปยังโมเดล Jev ของ TypeSafe เพื่อจัดอันดับใหม่ตามความเกี่ยวข้อง ปิดเป็นค่าเริ่มต้น เมื่อเปิด ข้อความตัดตอนจะถูกส่งออกจากอุปกรณ์นี้',
@@ -5806,9 +5776,6 @@ export const strings = {
     setAutoSave: 'Simpan otomatis semua dokumen',
     setAutoSaveDesc:
       'Aktifkan Simpan Otomatis secara default di setiap editor. Anda masih dapat menonaktifkannya untuk satu jendela.',
-    setAnalytics: 'Kirim statistik penggunaan anonim',
-    setAnalyticsDesc:
-      'Aktif secara default dan dapat dimatikan di Pengaturan → Umum. Menggunakan Google Analytics 4; Google menerima IP publik dan metadata transport Anda, tetapi tidak pernah mengumpulkan isi dokumen atau nama file.',
     setSearchRerank: 'Peringkat ulang Jev',
     setSearchRerankDesc:
       'Mengirim kutipan 20 hasil lokal teratas ke model Jev dari TypeSafe dan mengurutkannya ulang berdasarkan relevansi. Nonaktif secara bawaan; saat aktif, kutipan keluar dari perangkat ini.',
@@ -6367,9 +6334,6 @@ export const strings = {
     setAutoSave: 'Автосохранение всех документов',
     setAutoSaveDesc:
       'Включает автосохранение по умолчанию во всех редакторах. Его по-прежнему можно выключить для отдельного окна.',
-    setAnalytics: 'Отправлять анонимную статистику использования',
-    setAnalyticsDesc:
-      'Включено по умолчанию и отключается в Настройки → Общие. Используется Google Analytics 4; Google получает публичный IP и транспортные метаданные, но не содержимое документов и не имена файлов.',
     setSearchRerank: 'Переранжирование Jev',
     setSearchRerankDesc:
       'Отправляет фрагменты 20 лучших локальных результатов модели Jev от TypeSafe и переупорядочивает их по релевантности. По умолчанию выключено; при включении фрагменты покидают это устройство.',
@@ -6926,9 +6890,6 @@ export const strings = {
     setAutoSave: 'حفظ جميع المستندات تلقائيًا',
     setAutoSaveDesc:
       'تشغيل الحفظ التلقائي افتراضيًا في كل محرر. لا يزال بإمكانك إيقافه لنافذة واحدة.',
-    setAnalytics: 'إرسال إحصاءات استخدام مجهولة الهوية',
-    setAnalyticsDesc:
-      'مفعّل افتراضيًا ويمكن إيقافه في الإعدادات ← عام. يستخدم Google Analytics 4؛ تتلقى Google عنوان IP العام وبيانات النقل، ولكن لا يتم جمع محتوى المستندات أو أسماء الملفات.',
     setSearchRerank: 'إعادة ترتيب Jev',
     setSearchRerankDesc:
       'يرسل مقتطفات أفضل 20 نتيجة محلية إلى نموذج Jev من TypeSafe ويعيد ترتيبها حسب الصلة. معطّل افتراضيًا؛ عند التفعيل تخرج المقتطفات من هذا الجهاز.',
@@ -7474,9 +7435,6 @@ export const strings = {
     setAutoSave: 'Salvar automaticamente todos os documentos',
     setAutoSaveDesc:
       'Ativa o salvamento automático por padrão em todos os editores. Você ainda pode desativá-lo em uma janela específica.',
-    setAnalytics: 'Enviar estatísticas de uso anônimas',
-    setAnalyticsDesc:
-      'Ativado por padrão e pode ser desativado em Configurações → Geral. Usa o Google Analytics 4; o Google recebe seu IP público e metadados de transporte, mas nunca o conteúdo dos documentos ou nomes de arquivos.',
     setSearchRerank: 'Reordenação com Jev',
     setSearchRerankDesc:
       'Envia os trechos dos 20 melhores resultados locais ao modelo Jev da TypeSafe e os reordena por relevância. Desativado por padrão; quando ativo, os trechos saem deste dispositivo.',
@@ -8032,9 +7990,6 @@ export const strings = {
     setAutoSave: 'Salva automaticamente tutti i documenti',
     setAutoSaveDesc:
       'Attiva il salvataggio automatico per impostazione predefinita in ogni editor. Puoi comunque disattivarlo per una singola finestra.',
-    setAnalytics: 'Invia statistiche di utilizzo anonime',
-    setAnalyticsDesc:
-      "Attivo per impostazione predefinita e disattivabile in Impostazioni → Generali. Utilizza Google Analytics 4; Google riceve l'IP pubblico e i metadati di trasporto, ma mai contenuti o nomi dei file.",
     setSearchRerank: 'Riordino con Jev',
     setSearchRerankDesc:
       'Invia gli estratti dei 20 migliori risultati locali al modello Jev di TypeSafe e li riordina per pertinenza. Disattivato per impostazione predefinita; se attivo, gli estratti lasciano questo dispositivo.',
@@ -8588,9 +8543,6 @@ export const strings = {
     setAutoSave: 'Automatycznie zapisuj wszystkie dokumenty',
     setAutoSaveDesc:
       'Włącza autozapis domyślnie w każdym edytorze. Nadal możesz go wyłączyć dla pojedynczego okna.',
-    setAnalytics: 'Wysyłaj anonimowe statystyki użytkowania',
-    setAnalyticsDesc:
-      'Domyślnie włączone; można wyłączyć w Ustawienia → Ogólne. Korzysta z Google Analytics 4; Google otrzymuje publiczny adres IP i metadane transportowe, ale nigdy treść dokumentów ani nazwy plików.',
     setSearchRerank: 'Ponowne sortowanie Jev',
     setSearchRerankDesc:
       'Wysyła fragmenty 20 najlepszych lokalnych wyników do modelu Jev firmy TypeSafe i sortuje je według trafności. Domyślnie wyłączone; po włączeniu fragmenty opuszczają to urządzenie.',
@@ -9131,9 +9083,6 @@ export const strings = {
     documentTheme: 'Motiv stránky dokumentu',
     docThemeFollowApp: 'Podle motivu aplikace',
     saveLocation: 'Umístění pro ukládání',
-    setAnalytics: 'Odesílat anonymní statistiky používání',
-    setAnalyticsDesc:
-      'Ve výchozím nastavení zapnuto, kdykoli lze vypnout v Nastavení → Obecné. Používá Google Analytics 4; Google obdrží vaši veřejnou IP adresu a přenosová metadata, obsah dokumentů ani názvy souborů se však nikdy neshromažďují.',
     settings: 'Nastavení',
     setSecAccount: 'Účet',
     setSecGeneral: 'Obecné',
@@ -9690,9 +9639,6 @@ export const strings = {
     setAutoSave: 'Alle documenten automatisch opslaan',
     setAutoSaveDesc:
       'Zet automatisch opslaan standaard aan in elke editor. Je kunt het nog steeds uitschakelen voor één venster.',
-    setAnalytics: 'Anonieme gebruiksstatistieken verzenden',
-    setAnalyticsDesc:
-      'Standaard ingeschakeld en uit te schakelen via Instellingen → Algemeen. Gebruikt Google Analytics 4; Google ontvangt uw openbare IP en transportmetadata, maar nooit documentinhoud of bestandsnamen.',
     setSearchRerank: 'Jev-herordening',
     setSearchRerankDesc:
       'Stuurt de fragmenten van de 20 beste lokale resultaten naar het Jev-model van TypeSafe en sorteert ze op relevantie. Standaard uit; indien aan verlaten fragmenten dit apparaat.',
@@ -10245,9 +10191,6 @@ export const strings = {
     setAutoSave: 'Simpan automatik semua dokumen',
     setAutoSaveDesc:
       'Hidupkan Simpan Automatik secara lalai dalam setiap editor. Anda masih boleh mematikannya untuk satu tetingkap.',
-    setAnalytics: 'Hantar statistik penggunaan tanpa nama',
-    setAnalyticsDesc:
-      'Diaktifkan secara lalai dan boleh dimatikan di Tetapan → Umum. Menggunakan Google Analytics 4; Google menerima IP awam dan metadata pengangkutan, tetapi tidak pernah kandungan dokumen atau nama fail.',
     setSearchRerank: 'Susunan semula Jev',
     setSearchRerankDesc:
       'Menghantar petikan 20 hasil tempatan teratas ke model Jev TypeSafe dan menyusunnya semula mengikut kaitan. Dimatikan secara lalai; apabila dihidupkan, petikan keluar dari peranti ini.',
@@ -10799,9 +10742,6 @@ export const strings = {
     tabSleeping: 'מושהית',
     setAutoSave: 'שמירה אוטומטית של כל המסמכים',
     setAutoSaveDesc: 'מפעיל שמירה אוטומטית כברירת מחדל בכל עורך. עדיין אפשר לכבות אותה בחלון בודד.',
-    setAnalytics: 'שליחת נתוני שימוש אנונימיים',
-    setAnalyticsDesc:
-      'מופעל כברירת מחדל וניתן לכיבוי בהגדרות ← כללי. משתמש ב-Google Analytics 4; Google מקבלת IP ציבורי ומטא-נתוני תעבורה, אך לא תוכן מסמכים או שמות קבצים.',
     setSearchRerank: 'סידור מחדש עם Jev',
     setSearchRerankDesc:
       'שולח את הקטעים של 20 התוצאות המקומיות המובילות למודל Jev של TypeSafe ומסדר אותן מחדש לפי רלוונטיות. כבוי כברירת מחדל; כשמופעל, הקטעים יוצאים מהמכשיר הזה.',
@@ -11340,9 +11280,6 @@ export const strings = {
     setAutoSave: 'सभी दस्तावेज़ स्वतः सहेजें',
     setAutoSaveDesc:
       'हर संपादक में स्वतः सहेजना डिफ़ॉल्ट रूप से चालू करता है। आप इसे किसी एक विंडो के लिए अब भी बंद कर सकते हैं।',
-    setAnalytics: 'गुमनाम उपयोग आँकड़े भेजें',
-    setAnalyticsDesc:
-      'डिफ़ॉल्ट रूप से चालू; सेटिंग्स → सामान्य में बंद किया जा सकता है। Google Analytics 4 का उपयोग होता है; Google को सार्वजनिक IP और ट्रांसपोर्ट मेटाडेटा मिलता है, लेकिन दस्तावेज़ सामग्री या फ़ाइल नाम नहीं।',
     setSearchRerank: 'Jev खोज पुनर्क्रमण',
     setSearchRerankDesc:
       'स्थानीय खोज के शीर्ष 20 परिणामों के अंश TypeSafe के Jev मॉडल को भेजता है और उन्हें प्रासंगिकता के अनुसार पुनः क्रमित करता है। डिफ़ॉल्ट रूप से बंद; चालू होने पर अंश इस डिवाइस से बाहर जाते हैं।',
@@ -11881,9 +11818,6 @@ export const strings = {
     tabSleeping: '已休眠',
     setAutoSave: '所有文件自動儲存',
     setAutoSaveDesc: '在每個編輯器中預設開啟自動儲存，仍可在單一視窗中關閉。',
-    setAnalytics: '傳送匿名使用統計',
-    setAnalyticsDesc:
-      '此功能預設開啟，可隨時在「設定 → 一般」中關閉。使用 Google Analytics 4；Google 會接收您的公開 IP 位址和傳輸中繼資料，但絕不收集文件內容或檔案名稱。',
     setSearchRerank: 'Jev 搜尋重排',
     setSearchRerankDesc:
       '將本機搜尋前 20 筆命中片段傳給 TypeSafe 的 Jev 模型，依相關性重新排序。預設關閉；開啟後命中片段會離開本機。',

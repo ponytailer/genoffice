@@ -130,6 +130,7 @@ import { setGskProxyUrl, watchGskApiKey } from '@genoffice/ai-search'
 import {
   clearPlatformCredential,
   clearPlatformSession,
+  fetchPlatformCredential,
   fetchPlatformModels,
   loadPlatformSession,
   refreshPlatformProfile,
@@ -3809,6 +3810,17 @@ let fileIndexStore: FileIndexStore | null = null
 let fileIndexer: FileIndexer | null = null
 let searchReranker: SearchReranker | null = null
 
+/**
+ * The decision model is billed to the employee's platform API key, exactly like
+ * inference; there is no separate key in settings for it.
+ */
+async function platformDecisionKey(): Promise<string | null> {
+  const session = loadPlatformSession()
+  if (!session) return null
+  const credential = await fetchPlatformCredential(session)
+  return credential?.apiKey ?? null
+}
+
 function readFileSearchSettings(): FileSearchSettings {
   return normalizeFileSearchSettings(readAppSettings(APP_SETTINGS_PATH()).fileSearch)
 }
@@ -4909,7 +4921,7 @@ function registerHomeIpc(): void {
         ? query.paths.filter((p): p is string => typeof p === 'string').slice(0, 20)
         : []
       if (!q || paths.length < 2 || !ensureFileIndexer() || !fileIndexStore) return null
-      searchReranker ??= new SearchReranker(fileIndexStore)
+      searchReranker ??= new SearchReranker(fileIndexStore, undefined, platformDecisionKey)
       return searchReranker.rerank(q, paths, settings)
     },
   )
@@ -4934,7 +4946,7 @@ function registerHomeIpc(): void {
   )
 
   ipcMain.handle(HOME_CHANNELS.testFileSearchRerank, (_event, input: unknown) =>
-    probeDecision(normalizeFileSearchSettings(input)),
+    probeDecision(normalizeFileSearchSettings(input), undefined, platformDecisionKey),
   )
 
   // Starred files sort by mtime, which requires stat-ing them all first; they are hand-picked and few, so this is fine

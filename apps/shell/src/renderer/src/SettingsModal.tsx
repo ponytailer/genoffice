@@ -460,10 +460,10 @@ export interface SettingsTarget {
 }
 type TestResult = { ok: boolean; error?: string }
 
-/** Jev routes first (OpenRouter is the default), then the other decision-model servers */
+/** the platform's own decision model first, then the other decision-model servers */
 const DECISION_ENDPOINTS: { value: DecisionEndpoint; label: string }[] = [
-  { value: 'openrouter', label: 'Jev (OpenRouter)' },
-  { value: 'direct', label: 'Jev (TypeSafe API)' },
+  // brand name, identical in every locale — hence not an i18n key
+  { value: 'platform', label: 'CMLG AI 数字员工平台' },
   { value: 'perplexity', label: 'Perplexity (v1 27B)' },
   { value: 'perplexity-v12', label: 'Perplexity (v1.2)' },
   { value: 'perplexity-flash', label: 'Perplexity (Flash v1.2)' },
@@ -995,16 +995,15 @@ function AiMediaPane({
                   onPick={(v) => setFileSearch({ ...fileSearch, endpoint: v as DecisionEndpoint })}
                 />
               </div>
-              {keyRow(
-                'set-search-jev-key',
-                fileSearch.keys[fileSearch.endpoint],
-                fileSearch.endpoint === 'openrouter' ? 'sk-or-…' : 'API Key',
-                (v) =>
+              {/* the platform route bills the signed-in employee's sd_* key, so it
+                  has no key row of its own */}
+              {fileSearch.endpoint !== 'platform' &&
+                keyRow('set-search-jev-key', fileSearch.keys[fileSearch.endpoint], 'API Key', (v) =>
                   setFileSearch({
                     ...fileSearch,
                     keys: { ...fileSearch.keys, [fileSearch.endpoint]: v },
                   }),
-              )}
+                )}
               {fileSearch.endpoint === 'custom' && (
                 <>
                   {textRow(

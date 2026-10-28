@@ -58,8 +58,8 @@ ODF.
 - **Find files by what they say.** The home screen searches the names,
   folders and full text of your `.docx`, `.xlsx`, `.pptx`, PDF, Markdown and
   HTML files from a local SQLite index, CJK included. Optionally, the top hits
-  are reranked by **[TypeSafe Jev](https://typesafe.ai/)**, the System One
-  judgment model, so the file that answers your question comes first.
+  are reranked by a **decision model** on the CMLG AI digital-employee platform,
+  so the file that answers your question comes first.
 - **Ask your files, with sources.** Star a set of documents and **Ask AI** on
   the home screen answers questions across them, citing the file behind every
   claim so you can open it and check.
@@ -79,7 +79,7 @@ details and requirements in [Download](#download).
 
 ## Demo
 
-Six apps, one AI panel, a file search reranked by TypeSafe Jev, an Ask AI
+Six apps, one AI panel, a file search reranked by a decision model, an Ask AI
 that answers from your starred files with sources, and a command line for
 your coding agent. Every
 screenshot is the real app on macOS, with the AI driven from the prompt you
@@ -191,27 +191,27 @@ embeds a note or a picture inline. A **Backlinks** panel lists every note that
 points at the open one, and the **Graph** view maps the links of the whole
 vault.
 
-### 7 · Search — find the file that answers the question, with TypeSafe Jev
+### 7 · Search — find the file that answers the question
 
 Every file in your work folder is indexed on-device: names, folders and the
 extracted text of Word, Excel, PowerPoint, PDF, Markdown and HTML files, in a
-SQLite full-text index with CJK-aware tokenizing. Switch on **Jev search
-reranking** and the top 20 local hits are judged by
-[TypeSafe Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev),
-the System One model that returns one calibrated relevance score per document
-in a single call instead of generating text. The list is reordered by
+SQLite full-text index with CJK-aware tokenizing. Switch on **semantic search
+reranking** and the top 20 local hits are judged by the decision model of the
+CMLG AI digital-employee platform — a Laya decision head that returns one
+calibrated relevance score per document in a single call instead of generating
+text, billed to the signed-in employee's API key. The list is reordered by
 that score; if the call fails or times out, the local order stays.
 
-<img src="docs/assets/readme/search-jev-motion.webp" alt="Screen recording of the GenOffice home screen: typing laptop refresh policy lists a browser-cache policy, a brand-refresh plan and a dashboard-refresh schedule first while the equipment standards document is last; the Settings page shows Jev search reranking switched on under AI Media & Search with the TypeSafe endpoint; the same search then shows the equipment standards document first with a Jev badge next to the result count" width="100%">
+<img src="docs/assets/readme/search-jev-motion.webp" alt="Screen recording of the GenOffice home screen: typing laptop refresh policy lists a browser-cache policy, a brand-refresh plan and a dashboard-refresh schedule first while the equipment standards document is last; the Settings page shows semantic search reranking switched on under AI Media & Search with the decision endpoint selected; the same search then shows the equipment standards document first with a rerank badge next to the result count" width="100%">
 
 <table>
 <tr>
-<td width="50%"><img src="docs/assets/readme/search-jev-before-after.webp" alt="Two result lists for the query laptop refresh policy side by side: without Jev the dashboard refresh schedule, brand refresh plan and browser cache refresh policy lead and the company equipment standards document is fifth; with Jev the equipment standards document, which states the three-year laptop replacement cycle, is first"></td>
-<td width="50%"><img src="docs/assets/readme/search-jev-settings.webp" alt="GenOffice Settings, AI Media & Search page: the Local file search block with the Jev search reranking switch, the endpoint choice between OpenRouter and TypeSafe, and the API key field"></td>
+<td width="50%"><img src="docs/assets/readme/search-jev-before-after.webp" alt="Two result lists for the query laptop refresh policy side by side: without reranking the dashboard refresh schedule, brand refresh plan and browser cache refresh policy lead and the company equipment standards document is fifth; with reranking the equipment standards document, which states the three-year laptop replacement cycle, is first"></td>
+<td width="50%"><img src="docs/assets/readme/search-jev-settings.webp" alt="GenOffice Settings, AI Media & Search page: the Local file search block with the semantic search reranking switch and the decision endpoint choice"></td>
 </tr>
 <tr>
-<td><b>Same words, different answers</b> — "laptop refresh policy" matches a browser-cache refresh policy, a brand-refresh plan and a dashboard-refresh schedule word for word, so full-text ranking puts them first. Jev reads the excerpts and moves the equipment standards document, the one that states the three-year replacement cycle, to the top. The <b>Jev</b> badge next to the result count shows when the order came from the model.</td>
-<td><b>Off by default, one switch to turn on</b> — Settings → AI Media & Search → Local file search. Pick OpenRouter or TypeSafe direct, paste a key, hit Test connection. Only when the switch is on do excerpts of the top hits leave the device; the index itself never does.</td>
+<td><b>Same words, different answers</b> — "laptop refresh policy" matches a browser-cache refresh policy, a brand-refresh plan and a dashboard-refresh schedule word for word, so full-text ranking puts them first. The decision model reads the excerpts and moves the equipment standards document, the one that states the three-year replacement cycle, to the top. The <b>CMLG AI</b> badge next to the result count shows when the order came from the model.</td>
+<td><b>Off by default, one switch to turn on</b> — Settings → AI Media & Search → Local file search. Pick the platform's decision endpoint, hit Test connection. Only when the switch is on do excerpts of the top hits leave the device; the index itself never does.</td>
 </tr>
 </table>
 
@@ -294,7 +294,7 @@ document in a visible editor tab while you watch.
 - **Markdown and HTML too**, with the same AI panel and local export to Word.
 - **Search that finds the answer, not the keyword.** Full-text search over
   every document in your folders, indexed on-device, with optional reranking
-  by TypeSafe Jev, the System One judgment model.
+  by the platform's decision model.
 - **Ask AI across your files.** Star the files that matter and ask questions
   in plain language; every answer cites the file it came from, one click away.
 - **Skills.** Ready-made skills, or your own `SKILL.md`, attached from
@@ -319,12 +319,13 @@ Exa or Firecrawl for web search, and OpenAI, Gemini, Doubao/Seedream, GLM, Grok,
 Qwen, MiniMax or any OpenAI-compatible images endpoint for image generation
 and image/video analysis, plus DeepSeek V4.1 Flash for image analysis.
 
-**TypeSafe Jev** reranks the home screen's file search. Under **AI Media & Search →
-Local file search**, switch on Jev search reranking and pick an endpoint:
-[OpenRouter](https://openrouter.ai/typesafe) (model `typesafe/jev-1.13`) or
-TypeSafe's own API. The key is stored only on this device. It is off by
-default; when on, the excerpts of the top 20 local hits are sent for judgment
-and nothing else leaves the machine.
+**Decision models** rerank the home screen's file search. Under **AI Media &
+Search → Local file search**, switch on semantic search reranking and pick an
+endpoint: the CMLG AI digital-employee platform (default, billed to the
+employee's own `sd_*` key), or a third-party decision API (Perplexity, Liquid
+AI, OpenAI, Cloudflare Workers AI) or a local `/v1/systemone` server with a key
+you keep on this device. It is off by default; when on, the excerpts of the top
+20 local hits are sent for judgment and nothing else leaves the machine.
 
 **Parallel** works without an account: its free Search MCP (rate-limited) is the
 default web search whenever no Genspark login or search key is configured, and

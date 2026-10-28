@@ -29,7 +29,7 @@ Světlý / Tmavý / Podle systému. Volba Podle systému sleduje vzhled operačn
 Nejsou to přepínače — každá schopnost si vybere dodavatele, který ji poskytuje, a klíč i základní URL dodavatele se zadávají jednou a sdílejí se:
 
 - **Webové vyhledávání**, **Generování obrázků**, **Analýza obrázků** a **Analýza videí**, každá s poskytovatelem, modelem, klíčem a základní URL.
-- **Lokální hledání souborů** běží na tomto stroji. Pod ním je **Jev přeřazení výsledků** ve výchozím stavu **vypnuté**. Zapnete-li ho, výtahy top 20 lokálních zásahů — až 1 200 znaků na dokument plus názvy souborů a složek — míří na zvolený rozhodovací endpoint (Jev přes OpenRouter nebo TypeSafe, Perplexity, Liquid AI d1, Cloudflare, lokální engine nebo vlastní URL) a přeřadí se podle relevance. Vypnuté ze zařízení nic neodchází.
+- **Místní hledání souborů** běží na tomto počítači. Pod ním je **sémantické přeřazení výsledků** **ve výchozím stavu vypnuté**. Po zapnutí se úryvky 20 nejlepších místních výsledků — až 1 200 znaků každého dokumentu plus názvy souborů a složek — odešlou rozhodovacímu modelu této instalace na platformě digitálních zaměstnanců CMLG AI, účtovanému na API klíč přihlášeného zaměstnance, a přeřadí se podle relevance. Když je vypnuté, nic neopouští zařízení.
 
 ## O aplikaci
 

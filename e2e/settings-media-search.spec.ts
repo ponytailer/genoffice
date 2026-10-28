@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { launchShell, closeAndSaveVideo, screenshotPath } from './helpers'
 
-test('Jev reranking lives in the AI Media & Search pane, saves with it, and reports its own test verdict', async () => {
+test('search reranking lives in the AI Media & Search pane, saves with it, and reports its own test verdict', async () => {
   // the star prompt card sits over the pane footer on a small window
   const launched = await launchShell({
     onboardingSeen: true,
@@ -14,29 +14,35 @@ test('Jev reranking lives in the AI Media & Search pane, saves with it, and repo
   try {
     await page.getByRole('button', { name: 'Settings', exact: true }).click()
     await page.locator('.set-nav-item').filter({ hasText: 'General' }).click()
-    await expect(page.getByRole('switch', { name: 'Jev search reranking' })).toHaveCount(0)
+    await expect(page.getByRole('switch', { name: 'Semantic search reranking' })).toHaveCount(0)
 
     await page.locator('.set-nav-item').filter({ hasText: 'AI Media & Search' }).click()
     const block = page.locator('section', {
       has: page.locator('.set-pane-subtitle', { hasText: 'Local file search' }),
     })
-    const toggle = block.getByRole('switch', { name: 'Jev search reranking' })
+    const toggle = block.getByRole('switch', { name: 'Semantic search reranking' })
     await expect(toggle).toHaveAttribute('aria-checked', 'false')
     await toggle.click()
-    await block.getByRole('button', { name: 'Jev endpoint', exact: true }).click()
-    await page.getByRole('option', { name: 'Jev (TypeSafe API)', exact: true }).click()
+    await block.getByRole('button', { name: 'Reranking endpoint', exact: true }).click()
+    await page.getByRole('option', { name: 'CMLG AI 数字员工平台', exact: true }).click()
 
-    // the block reports its own verdict: no key entered, nothing leaves the machine
+    // the block reports its own verdict: without a signed-in employee key,
+    // nothing leaves the machine
     await page.getByRole('button', { name: 'Test connection', exact: true }).click()
     await expect(block.locator('.set-ai-status.err')).toHaveText('Enter an API key')
     // the footer names the first failing block and its provider; which one comes
     // first depends on whether this machine is signed in to Genspark
     await expect(page.locator('.set-pane-actions .set-ai-status.err')).toHaveText(
-      /^(Web search · Genspark|Local file search · Jev \(TypeSafe API\)): .+/,
+      /^(Web search · Genspark|Local file search · CMLG AI 数字员工平台): .+/,
     )
     await page.screenshot({ path: screenshotPath('settings-media-search-test') })
 
-    await block.locator('#set-search-jev-key').fill('ts-key')
+    // the platform route has no key row of its own; a local server is the only
+    // decision endpoint that still takes a typed key, so switch to one to prove
+    // the row round-trips into the settings file
+    await block.getByRole('button', { name: 'Reranking endpoint', exact: true }).click()
+    await page.getByRole('option', { name: 'Kev (local)', exact: true }).click()
+
     await page.getByRole('button', { name: 'Save', exact: true }).click()
     await expect(page.locator('.set-pane-actions .set-ai-status.ok')).toHaveText('Saved')
     await expect
@@ -46,13 +52,12 @@ test('Jev reranking lives in the AI Media & Search pane, saves with it, and repo
       })
       .toEqual({
         rerank: true,
-        endpoint: 'direct',
+        endpoint: 'kev',
         keys: {
           // one entry per decision endpoint, in ENDPOINT_IDS order: `toEqual` on
           // the saved shape is the tripwire that makes adding an endpoint a
           // deliberate act rather than a silent new key in every settings file
-          openrouter: '',
-          direct: 'ts-key',
+          platform: '',
           perplexity: '',
           'perplexity-v12': '',
           'perplexity-flash': '',

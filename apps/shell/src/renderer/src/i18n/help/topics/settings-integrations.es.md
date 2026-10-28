@@ -29,7 +29,7 @@ Claro / Oscuro / Seguir el sistema. «Seguir el sistema» sigue la apariencia de
 No son conmutadores: cada capacidad elige el proveedor que la sirve, y la clave y la URL base de un proveedor se introducen una vez y se comparten:
 
 - **Búsqueda web**, **Generación de imágenes**, **Análisis de imágenes** y **Análisis de vídeo**, cada una con un proveedor, un modelo, una clave y una URL base.
-- La **búsqueda de archivos local** corre en esta máquina. Debajo, el **reranking de búsqueda Jev** está **desactivado por defecto**. Al activarlo, los extractos de los 20 primeros aciertos locales — hasta 1.200 caracteres por documento, más nombres de archivos y carpetas — van al punto final de decisión que elijas (Jev vía OpenRouter o TypeSafe, Perplexity, Liquid AI d1, Cloudflare, un motor local o una URL propia) para reordenarlos por relevancia. Desactivado, nada deja el dispositivo.
+- La **búsqueda de archivos local** se ejecuta en esta máquina. Debajo, la **reordenación semántica de la búsqueda** está **desactivada por defecto**. Al activarla, los extractos de los 20 primeros aciertos — hasta 1.200 caracteres por documento, más los nombres de archivo y carpeta — van al modelo de decisión de esta instalación en la plataforma de empleados digitales CMLG AI, facturado a la clave API del empleado conectado, para reordenarlos por relevancia. Desactivada, nada sale del dispositivo.
 
 ## Acerca de
 

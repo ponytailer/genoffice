@@ -184,8 +184,7 @@ export interface FileSearchHit extends RecentEntry {
  * real money per call and a dropdown that names them is the safer surface.
  */
 export type DecisionEndpoint =
-  | 'openrouter'
-  | 'direct'
+  | 'platform'
   | 'perplexity'
   | 'perplexity-v12'
   | 'perplexity-flash'

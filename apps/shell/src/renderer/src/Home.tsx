@@ -1518,7 +1518,7 @@ export function Home() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchPage, setSearchPage] = useState<FileSearchPage | null>(null)
   const [rerank, setRerank] = useState<{ key: string; result: FileSearchRerank } | null>(null)
-  // bumped when the Jev settings change so the current results are judged again (or the order dropped)
+  // bumped when the rerank settings change so the current results are judged again (or the order dropped)
   const [rerankSettingsTick, setRerankSettingsTick] = useState(0)
   const [settingsRequest, setSettingsRequest] = useState<SettingsTarget | null>(null)
   useEffect(
@@ -1770,7 +1770,7 @@ export function Home() {
     return () => window.clearTimeout(timer)
   }, [q, filter])
 
-  // Jev judges the top local hits once they settle; the main process answers null when reranking is off.
+  // the decision model judges the top local hits once they settle; the main process answers null when reranking is off.
   // The key changes only with the query, filter or candidate set, so index polls do not restart the timer.
   const rerankKey =
     q && searchPage && searchPage.hits.length >= 2
@@ -3028,8 +3028,8 @@ export function Home() {
   const renderSearchSettingsButton = () => (
     <button
       className="file-search-settings"
-      title={t('searchJevSettings')}
-      aria-label={t('searchJevSettings')}
+      title={t('searchRerankSettings')}
+      aria-label={t('searchRerankSettings')}
       onClick={() => setSettingsRequest({ section: 'aiMedia', block: 'rerank' })}
     >
       <svg
@@ -3153,7 +3153,7 @@ export function Home() {
 
   const rerankApplied = rerank && rerank.key === rerankKey ? rerank.result : null
 
-  /** judged hits in Jev's order, then the rest in local order */
+  /** judged hits in the model's order, then the rest in local order */
   const orderedSearchHits = (hits: readonly FileSearchHit[]): FileSearchHit[] => {
     if (!rerankApplied) return [...hits]
     const rank = new Map(rerankApplied.order.map((path, i) => [path, i]))
@@ -3164,9 +3164,10 @@ export function Home() {
     const total = searchPage?.total ?? 0
     return (
       <div className="recents-heading">
+        {/* brand name, identical in every locale — hence not an i18n key */}
         {rerankApplied && (
           <span className="search-rerank-badge" title={t('searchRerankedBy')}>
-            Jev
+            CMLG AI
           </span>
         )}
         <span className="file-count">

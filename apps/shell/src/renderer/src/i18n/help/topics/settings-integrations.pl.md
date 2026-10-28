@@ -29,7 +29,7 @@ Jasny / Ciemny / Zgodnie z systemem. Opcja Zgodnie z systemem podąża za wyglą
 To nie są przełączniki — każda możliwość wybiera dostawcę, który ją obsługuje, a klucz i bazowy adres URL dostawcy wpisuje się raz i są wspólne:
 
 - **Wyszukiwanie w sieci**, **Generowanie obrazów**, **Analiza obrazów** i **Analiza wideo**, każda z dostawcą, modelem, kluczem i bazowym adresem URL.
-- **Lokalne wyszukiwanie plików** działa na tej maszynie. Pod nim **przerankowanie wyszukiwania Jev** jest **domyślnie wyłączone**. Po włączeniu fragmenty top 20 lokalnych trafień — do 1 200 znaków na dokument plus nazwy plików i folderów — idą do wybranego punktu decyzyjnego (Jev przez OpenRouter lub TypeSafe, Perplexity, Liquid AI d1, Cloudflare, lokalny silnik lub własny URL) i są porządkowane według trafności. Wyłączone — nic nie opuszcza urządzenia.
+- **Wyszukiwanie plików lokalnych** działa na tym komputerze. Poniżej **semantyczne sortowanie wyników** jest **domyślnie wyłączone**. Po włączeniu fragmenty 20 najlepszych wyników — do 1200 znaków każdego dokumentu plus nazwy plików i folderów — trafiają do modelu decyzyjnego tej instalacji na platformie cyfrowych pracowników CMLG AI, rozliczane kluczem API zalogowanego pracownika, i są porządkowane według trafności. Po wyłączeniu nic nie opuszcza urządzenia.
 
 ## O aplikacji
 

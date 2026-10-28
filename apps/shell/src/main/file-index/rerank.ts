@@ -10,7 +10,7 @@ import {
   isLocalEndpoint,
   MAX_DOCS,
   type DecisionCallOptions,
-  type JevTransport,
+  type DecisionTransport,
 } from './decider'
 import type { FileIndexStore } from './store'
 
@@ -20,10 +20,11 @@ const CACHE_MAX = 200
 
 export const DEFAULT_FILE_SEARCH_SETTINGS: FileSearchSettings = {
   rerank: false,
-  endpoint: 'openrouter',
+  // the platform is the only route this deployment can bill and audit
+  endpoint: 'platform',
   keys: {
-    openrouter: '',
-    direct: '',
+    // unused for 'platform': the key is the signed-in employee's sd_* credential
+    platform: '',
     perplexity: '',
     'perplexity-v12': '',
     'perplexity-flash': '',
@@ -43,8 +44,7 @@ export const DEFAULT_FILE_SEARCH_SETTINGS: FileSearchSettings = {
 }
 
 const ENDPOINT_IDS: readonly DecisionEndpoint[] = [
-  'openrouter',
-  'direct',
+  'platform',
   'perplexity',
   'perplexity-v12',
   'perplexity-flash',
@@ -70,7 +70,9 @@ export function normalizeFileSearchSettings(raw: unknown): FileSearchSettings {
   const key = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 512) : '')
   const text = (v: unknown, n: number) => (typeof v === 'string' ? v.trim().slice(0, n) : '')
   const endpointRaw = (r.endpoint ?? r.jevEndpoint) as unknown
-  const endpoint: DecisionEndpoint = ENDPOINT_IDS.find((id) => id === endpointRaw) ?? 'openrouter'
+  // an app-settings.json written by the Jev build names a route that no longer
+  // exists; it normalizes onto the platform, which is the only intended target
+  const endpoint: DecisionEndpoint = ENDPOINT_IDS.find((id) => id === endpointRaw) ?? 'platform'
   const keys = Object.fromEntries(
     ENDPOINT_IDS.map((id) => [id, key(keysRaw[id])]),
   ) as FileSearchSettings['keys']
@@ -111,7 +113,9 @@ export class SearchReranker {
 
   constructor(
     private readonly store: FileIndexStore,
-    private readonly send?: JevTransport,
+    private readonly send?: DecisionTransport,
+    /** resolves the signed-in employee's `sd_*` key; the platform route has none of its own */
+    private readonly platformKey?: () => Promise<string | null>,
   ) {}
 
   async rerank(
@@ -119,9 +123,19 @@ export class SearchReranker {
     paths: readonly string[],
     settings: FileSearchSettings,
   ): Promise<FileSearchRerank | null> {
+    if (!settings.rerank) return null
     const opts = callOptions(settings)
+    if (settings.endpoint === 'platform') {
+      // the platform bills the employee, not a per-endpoint key from settings
+      const key = (await this.platformKey?.())?.trim() ?? ''
+      if (!key) {
+        console.warn('[file-index] rerank skipped: no platform API key for this session')
+        return null
+      }
+      opts.key = key
+    }
     // local servers (Kev, Rizzo Flow, a custom URL) run without credentials
-    if (!settings.rerank || (!isLocalEndpoint(settings.endpoint) && !opts.key)) return null
+    if (!isLocalEndpoint(settings.endpoint) && !opts.key) return null
     if (settings.endpoint === 'custom' && !settings.customBaseUrl.trim()) return null
     if (isCloudflareEndpoint(settings.endpoint) && !settings.cloudflareAccountId.trim()) return null
     const hits = this.store.excerptsFor(paths.slice(0, MAX_DOCS), q, EXCERPT_CHARS)
@@ -158,7 +172,13 @@ export class SearchReranker {
     let scores: number[]
     try {
       scores = (await evaluate(q, docs, opts, this.send)).scores
-    } catch {
+    } catch (e) {
+      // the local order is the fallback for every failure; the platform route is
+      // the one worth naming, because a 401/403 there means the employee's key
+      // is missing the `decisions:run` scope rather than a transient hiccup
+      if (opts.endpoint === 'platform') {
+        console.warn('[file-index] platform rerank failed:', e instanceof Error ? e.message : e)
+      }
       return null
     }
     const judged = hits.slice(0, scores.length)
@@ -200,9 +220,15 @@ const PROBE_ERRORS: Record<string, string> = {
 /** the settings-UI connection test: one two-document judgement against the given settings */
 export async function probeDecision(
   settings: FileSearchSettings,
-  send?: JevTransport,
+  send?: DecisionTransport,
+  platformKey?: () => Promise<string | null>,
 ): Promise<{ ok: boolean; error?: string }> {
   const opts = callOptions(settings)
+  if (settings.endpoint === 'platform') {
+    const key = (await platformKey?.())?.trim() ?? ''
+    if (!key) return { ok: false, error: PROBE_ERRORS['missing-key'] }
+    opts.key = key
+  }
   if (!isLocalEndpoint(settings.endpoint) && !opts.key.trim())
     return { ok: false, error: PROBE_ERRORS['missing-key'] }
   try {

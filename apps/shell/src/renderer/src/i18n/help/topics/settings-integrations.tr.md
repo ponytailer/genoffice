@@ -29,7 +29,7 @@ Açık / Koyu / Sistem. Sistem, işletim sisteminin görünümünü izler ve dü
 Anahtar değil — her yetenek ona hizmet eden satıcıyı seçer ve bir satıcının anahtarı ile temel URL'si bir kez girilip paylaşılır:
 
 - **Web araması**, **Görsel oluşturma**, **Görsel analizi** ve **Video analizi**, her biri bir sağlayıcı, bir model, bir anahtar ve bir temel URL ile.
-- **Yerel dosya araması** bu makinede çalışır. Altındaki **Jev arama yeniden sıralaması** **varsayılan olarak kapalıdır**. Açtığınızda, en iyi 20 yerel eşleşmenin alıntıları — her belgeden en çok 1.200 karakter, artı dosya ve klasör adları — seçtiğiniz karar uç noktasına (OpenRouter veya TypeSafe üzerinden Jev, Perplexity, Liquid AI d1, Cloudflare, yerel bir motor ya da özel bir URL) ilgiye göre yeniden sıralanmak üzere gider. Kapalıyken cihazdan hiçbir şey çıkmaz.
+- **Yerel dosya araması** bu makinede çalışır. Altında, **anlamsal arama yeniden sıralaması** **varsayılan olarak kapalıdır**. Açtığınızda en iyi 20 yerel sonucun alıntıları — belge başına 1.200 karaktere kadar, dosya ve klasör adlarıyla birlikte — bu kurulumun CMLG AI dijital çalışan platformundaki karar modeline, oturum açmış çalışanın API anahtarı üzerinden faturalandırılarak, ilgililiğe göre yeniden sıralanmak üzere gider. Kapalıyken cihazdan hiçbir şey çıkmaz.
 
 ## Hakkında
 

@@ -29,7 +29,7 @@ Clair / Sombre / Suivre le système. Suivre le système suit l’apparence de l�
 Ce ne sont pas des interrupteurs : chaque capacité choisit le fournisseur qui la sert, et la clé et l'URL de base d'un fournisseur sont saisies une seule fois et partagées :
 
 - **Recherche web**, **Génération d'images**, **Analyse d'images** et **Analyse vidéo**, chacune avec un fournisseur, un modèle, une clé et une URL de base.
-- La **recherche de fichiers locale** tourne sur cette machine. En dessous, le **reranking de recherche Jev** est **désactivé par défaut**. Activez-le et les extraits des 20 premiers résultats locaux — jusqu'à 1 200 caractères par document, plus noms de fichiers et de dossiers — partent vers le point de terminaison de décision choisi (Jev via OpenRouter ou TypeSafe, Perplexity, Liquid AI d1, Cloudflare, un moteur local ou une URL personnalisée) pour être réordonnés par pertinence. Désactivé, rien ne quitte l'appareil.
+- La **recherche de fichiers locale** s'exécute sur cette machine. En dessous, le **reclassement sémantique de la recherche** est **désactivé par défaut**. Activez-le et les extraits des 20 premiers résultats — jusqu'à 1 200 caractères par document, plus les noms de fichiers et de dossiers — partent vers le modèle de décision de ce déploiement sur la plateforme d'employés numériques CMLG AI, facturé à la clé API de l'employé connecté, pour être réordonnés par pertinence. Désactivé, rien ne quitte l'appareil.
 
 ## À propos
 

@@ -69,10 +69,15 @@
 - 打包相关的文档与 21 种语言的 README 同步到新的 `npm run dist` 用法。（`文档`）
 - 首页左上角的品牌名改为 **CMLGOffice**。图标与品牌名拆成两个元素（图标仍跟随主题反色），
   品牌名变成可编辑文本，以后改名不用重画字形。（`shell`）
-- AI 面板标题前的品牌图标移除，六个编辑器只保留标题文字；面板糖叠后的侧边小按钮仍保留该图标。
+- AI 面板标题前的品牌图标移除，六个编辑器只保留标题文字；面板折叠后的侧边小按钮仍保留该图标。
   （`docs` `sheets` `slides` `pdf` `markdown` `html`）
 - 六个编辑器的 AI 面板标题统一为 **CMLG AI**（HTML / PDF / Markdown / Excel 此前仍硬编码旧厂商名）。
   （`docs` `sheets` `slides` `pdf` `markdown` `html`）
+- 首页文件搜索的语义重排改用 **CMLG AI 数字员工平台**的决策模型
+  （`POST /api/v1/decisions/predict`，按登录员工的 `sd_live_*` API Key 计费，无需另配密钥）：
+  Jev / TypeSafe / OpenRouter 两条路由移除，历史设置文件里的旧端点自动落到平台；
+  平台未下发可用密钥时重排静默跳过并保留本地顺序。端点选项、结果徽标、22 种语言的文案
+  与帮助手册、README 同步更新。（`shell` `文档`）
 
 ### 修复
 

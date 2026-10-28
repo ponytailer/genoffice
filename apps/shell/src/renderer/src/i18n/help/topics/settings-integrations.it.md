@@ -29,7 +29,7 @@ Chiaro / Scuro / Segui il sistema. L'opzione Segui il sistema segue l'aspetto de
 Non sono interruttori: ogni capacità sceglie il fornitore che la serve e la chiave e l'URL di base di un fornitore si inseriscono una volta sola e si condividono:
 
 - **Ricerca web**, **Generazione di immagini**, **Analisi di immagini** e **Analisi video**, ciascuna con un provider, un modello, una chiave e un URL di base.
-- La **ricerca file locale** gira su questa macchina. Sotto, il **reranking di ricerca Jev** è **disattivato per impostazione predefinita**. Attivandolo, i estratti dei primi 20 risultati locali — fino a 1.200 caratteri per documento, più nomi di file e cartelle — vanno all'endpoint decisionale scelto (Jev via OpenRouter o TypeSafe, Perplexity, Liquid AI d1, Cloudflare, un motore locale o un URL personalizzato) per essere riordinati per rilevanza. Da disattivato, nulla lascia il dispositivo.
+- La **ricerca locale dei file** gira su questa macchina. Sotto, il **riordino semantico della ricerca** è **disattivato per impostazione predefinita**. Attivandolo, gli estratti dei primi 20 risultati — fino a 1.200 caratteri per documento, più i nomi di file e cartelle — vanno al modello di decisione di questa installazione sulla piattaforma di dipendenti digitali CMLG AI, addebitato sulla chiave API del dipendente connesso, per essere riordinati per pertinenza. Disattivato, nulla lascia il dispositivo.
 
 ## Informazioni
 

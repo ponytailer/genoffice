@@ -153,10 +153,21 @@ describe('the settings dropdown matches the endpoint table', () => {
     // read as no key rather than throw on the way to the defaults.
     const legacy = {
       ...DEFAULT_FILE_SEARCH_SETTINGS,
-      keys: { openrouter: 'sk-old' } as Record<DecisionEndpoint, string>,
+      keys: { kev: 'local-token' } as unknown as Record<DecisionEndpoint, string>,
     }
     const normalized = normalizeFileSearchSettings(legacy)
-    expect(normalized.keys.openrouter).toBe('sk-old')
+    expect(normalized.keys.kev).toBe('local-token')
     expect(normalized.keys['liquid-ultra']).toBe('')
+  })
+
+  it('drops the retired Jev routes and lands them on the platform', () => {
+    // app-settings.json written by the Jev build: those endpoints no longer
+    // exist, so the saved route and its key normalize onto the platform instead
+    // of leaving an unreachable selection in place.
+    const jevEra = { rerank: true, jevEndpoint: 'openrouter', jevKeys: { openrouter: 'sk-or-old' } }
+    const normalized = normalizeFileSearchSettings(jevEra)
+    expect(normalized.endpoint).toBe('platform')
+    expect(normalized.keys.platform).toBe('')
+    expect(normalized.rerank).toBe(true)
   })
 })

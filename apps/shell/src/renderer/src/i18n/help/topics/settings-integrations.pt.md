@@ -29,7 +29,7 @@ Claro / Escuro / Seguir o Sistema. O modo Seguir o Sistema acompanha o aspeto do
 Não são interruptores — cada capacidade escolhe o fornecedor que a serve, e a chave e o URL base de um fornecedor são introduzidos uma vez e partilhados:
 
 - **Busca na web**, **Geração de imagens**, **Análise de imagens** e **Análise de vídeo**, cada uma com um fornecedor, um modelo, uma chave e um URL base.
-- A **busca de arquivos local** roda nesta máquina. Abaixo dela, o **reranking de busca Jev** vem **desligado por padrão**. Ao ligar, os trechos dos 20 primeiros acertos locais — até 1.200 caracteres por documento, mais nomes de arquivos e pastas — vão para o endpoint de decisão escolhido (Jev via OpenRouter ou TypeSafe, Perplexity, Liquid AI d1, Cloudflare, um motor local ou URL própria) para reordenar por relevância. Desligado, nada sai do aparelho.
+- A **busca local de arquivos** roda nesta máquina. Abaixo dela, a **reordenação semântica da busca** fica **desativada por padrão**. Ao ativá-la, os excertos dos 20 primeiros resultados — até 1.200 caracteres por documento, mais os nomes de arquivos e pastas — vão para o modelo de decisão desta instalação na plataforma de funcionários digitais CMLG AI, cobrado na API Key do funcionário conectado, para serem reordenados por relevância. Desativada, nada sai do dispositivo.
 
 ## Sobre
 

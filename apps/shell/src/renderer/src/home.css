@@ -16,7 +16,7 @@
   --shadow-pill: 0 1px 2px rgb(0 0 0 / 8%);
   --shadow-composer: 0 6px 30px rgb(0 0 0 / 8%);
 
-  /* genoffice-logo.svg is pure black-and-white; dark themes flip it to 1 */
+  /* cmlg-office-mark.svg is pure black-and-white; dark themes flip it to 1 */
   --logo-invert: 0;
   /* lift for the kb-ask composer box */
 }
@@ -132,11 +132,23 @@ body.vib .home {
   margin-bottom: 20px;
 }
 
-.logo-lockup {
+/* The mark ships as art, the name as live text: renaming the product is then a
+ * one-line string change instead of redrawing vector letterforms. */
+.logo-mark {
   display: block;
   height: 28px;
   width: auto;
   filter: invert(var(--logo-invert));
+}
+
+.logo-name {
+  font-family: -apple-system, var(--ui-cjk), 'Segoe UI', 'Microsoft YaHei', sans-serif;
+  font-size: 21px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--text);
+  white-space: nowrap;
 }
 
 .sidebar-nav {

@@ -4,7 +4,7 @@ import type {
   PointerEvent as ReactPointerEvent,
   ReactElement,
 } from 'react'
-import logoLockup from './assets/genoffice-logo.svg'
+import logoMark from './assets/cmlg-office-mark.svg'
 import { KbAskPanel } from './KbAskPanel'
 import { FileBadge } from './file-badge'
 import { placeFolderMenu } from './folder-menu-position'
@@ -3489,7 +3489,8 @@ export function Home() {
         style={sidebarWidth === null ? undefined : { width: sidebarWidth }}
       >
         <div className="sidebar-logo">
-          <img className="logo-lockup" src={logoLockup} alt="CMLG Office" />
+          <img className="logo-mark" src={logoMark} alt="" aria-hidden="true" />
+          <span className="logo-name">CMLGOffice</span>
         </div>
         <nav className="sidebar-nav">
           <button

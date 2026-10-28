@@ -347,8 +347,6 @@ export const tr = {
   appPivotSheetNoMove: 'Bu sayfa bir PivotTable içeriyor — aralık taşıma henüz desteklenmiyor.',
   appMergeOverTable:
     'Seçim bir Excel tablosuyla çakışıyor — tablo içinde hücre birleştirme henüz desteklenmiyor.',
-  appTableFilterNoEdit:
-    'Bu sayfanın filtresi bir Excel tablosuna ait — düzenlenmesi henüz kaydedilemiyor.',
   appAutofillStreaming: 'Hâlâ akışla yüklenen bir alana otomatik doldurmaya henüz izin verilmiyor.',
   appDvNeedsIndexed:
     'Veri doğrulamayı düzenlemek için önce bu sayfanın tamamen dizinlenmesi gerekir — birazdan yeniden deneyin.',
@@ -586,8 +584,6 @@ export const tr = {
   appSaveFailed: 'Çalışma kitabı kaydedilemiyor.',
   appCfRuleUnsaveable:
     'Bu koşullu biçimlendirme kuralı xlsx’e kaydedilemez — başka bir kural türüne geçin.',
-  appSaveErrX14Dv:
-    'Bu sayfada genişletilmiş (x14) veri doğrulama var; doğrulama kurallarını düzenlemek henüz desteklenmiyor.',
   appSaveErrMultiSelectList:
     'Çoklu seçim liste doğrulaması xlsx’e kaydedilemez — kaydetmeden önce kuralı silin.',
   appSaveErrX14Cf:

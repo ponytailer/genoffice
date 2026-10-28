@@ -49,6 +49,9 @@
   （或推 `v*` 标签）就能产出 macOS arm64 + x64 与 Windows 安装包；版本号可由输入框覆盖。
   Electron、electron-builder、cargo 默认走国内镜像（仓库变量 `DIST_MIRROR=off` 可切回官方源），
   Linux 不在该流水线内。（`打包`）
+- **一键发布**：`npm run release` 会把最近一次成功的打包 run 的产物下载下来，建成 / 补全对应 tag
+  的 GitHub Release 并上传安装包，最后把直链与 `SHA256SUMS.txt` 地址打印出来。支持 `--run`、
+  `--tag`、`--draft`、`--dry-run`、`--refresh`、`--keep`。（`打包`）
 
 ### 变更
 

@@ -40,7 +40,8 @@
     "dist": "node scripts/dist.mjs",
     "dist:mac": "node scripts/dist.mjs --target mac",
     "dist:win": "node scripts/dist.mjs --target win",
-    "dist:linux": "node scripts/dist.mjs --target linux"
+    "dist:linux": "node scripts/dist.mjs --target linux",
+    "release": "node scripts/release-gh.mjs"
   },
   "dependencies": {
     "ws": "^8.21.1"

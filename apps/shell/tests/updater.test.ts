@@ -116,6 +116,18 @@ vi.mock('../src/main/update-window', () => ({
 const FIRST_CHECK_DELAY_MS = 15_000
 const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
 
+/** resources/app-update.yml of an updatable build (baked from GENOFFICE_UPDATE_URL). */
+const FEED_YML = 'provider: generic\nurl: https://cdn.example.com/feed\n'
+/** The page a build without a feed (or without mac code signing) falls back to. */
+const DOWNLOAD_PAGE_URL = 'https://ai-staff.folidaymall.com/download/office'
+
+/** Simulates an install with no update feed baked in (fork build, GENOFFICE_UPDATE_URL unset). */
+function withoutFeed(): void {
+  readFileSyncMock.mockImplementation(() => {
+    throw new Error('no app-update.yml')
+  })
+}
+
 let platformSpy: { restore: () => void } | null = null
 
 function setPlatform(platform: string): void {
@@ -165,9 +177,11 @@ beforeEach(() => {
   showMessageBox.mockReset()
   showMessageBox.mockImplementation(() => Promise.resolve({ response: 0 }))
   readFileSyncMock.mockReset()
-  readFileSyncMock.mockImplementation(() => {
-    throw new Error('no app-update.yml')
-  })
+  // A packaged build that can self-update has resources/app-update.yml — the
+  // default fixture mirrors that. Tests about a build WITHOUT a feed override
+  // this to throw.
+  Object.defineProperty(process, 'resourcesPath', { value: '/res', configurable: true })
+  readFileSyncMock.mockReturnValue(FEED_YML)
   setPlatform('darwin')
 })
 
@@ -572,20 +586,16 @@ describe('manual download fallback', () => {
     readFileSyncMock.mockReturnValue('url: http://cdn.example.com/mac\n')
     const actions = await failTwiceIntoManual(macFiles)
     actions.onOpenDownload()
-    expect(openExternal).toHaveBeenCalledWith(
-      'https://github.com/genspark-ai/genoffice/releases/latest',
-    )
+    expect(openExternal).toHaveBeenCalledWith(DOWNLOAD_PAGE_URL)
   })
 
-  it('falls back to the generic download page when the feed base cannot be read', async () => {
-    // readFileSyncMock throws by default (no app-update.yml)
+  it('falls back to the platform download page when the feed base cannot be read', async () => {
+    withoutFeed()
     const actions = await failTwiceIntoManual([
       { url: 'https://attacker.example/GenOffice-0.2.0-arm64.dmg' },
     ])
     actions.onOpenDownload()
-    expect(openExternal).toHaveBeenCalledWith(
-      'https://github.com/genspark-ai/genoffice/releases/latest',
-    )
+    expect(openExternal).toHaveBeenCalledWith(DOWNLOAD_PAGE_URL)
   })
 })
 
@@ -641,10 +651,21 @@ describe('checkForUpdatesNow (r148 manual check)', () => {
 
     expect(showMessageBox).toHaveBeenCalledTimes(1)
     expect(lastDialogOpts().buttons.length).toBe(2)
-    expect(openExternal).toHaveBeenCalledWith(
-      'https://github.com/genspark-ai/genoffice/releases/latest',
-    )
+    expect(openExternal).toHaveBeenCalledWith(DOWNLOAD_PAGE_URL)
     expect(checkForUpdates).not.toHaveBeenCalled()
+  })
+
+  it('treats a packaged build without app-update.yml as no self-update', async () => {
+    withoutFeed()
+    const { initAutoUpdater, checkForUpdatesNow } = await loadUpdater()
+    initAutoUpdater(() => null)
+    showMessageBox.mockImplementation(() => Promise.resolve({ response: 1 }))
+
+    await checkForUpdatesNow()
+
+    expect(checkForUpdates).not.toHaveBeenCalled()
+    expect(lastDialogOpts().buttons.length).toBe(2)
+    expect(openExternal).toHaveBeenCalledWith(DOWNLOAD_PAGE_URL)
   })
 
   it("shows you're-up-to-date (with the current version) when nothing newer exists", async () => {

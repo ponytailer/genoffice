@@ -131,6 +131,10 @@ jobs:
           # app-update.yml and in-app auto-update stays off. Set the repo
           # variable UPDATE_URL to ship an updatable build.
           GENOFFICE_UPDATE_URL: ${{ vars.UPDATE_URL }}
+          # Where "install it by hand" points when the app cannot self-update
+          # (unsigned macOS, Linux deb). Falls back to the platform download
+          # page when unset.
+          GENOFFICE_DOWNLOAD_URL: ${{ vars.DOWNLOAD_URL }}
           MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
           MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
@@ -252,6 +256,7 @@ jobs:
           # "production" = DigiCert KeyLocker. Empty keeps the build unsigned.
           GENOFFICE_WIN_SIGN_MODE: ${{ vars.WIN_SIGN_MODE }}
           GENOFFICE_UPDATE_URL: ${{ vars.UPDATE_URL }}
+          GENOFFICE_DOWNLOAD_URL: ${{ vars.DOWNLOAD_URL }}
           WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
           WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
         run: |

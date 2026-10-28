@@ -424,11 +424,50 @@ const RECHECK_INTERVAL_MS = 4 * 60 * 60 * 1000
 // code-signing identity (Apple Team ID) change, which Squirrel.Mac rejects
 // on every retry while the error looks like a download failure to the user.
 const MANUAL_FALLBACK_AFTER = 2
-// Last-resort manual link only: the GitHub Latest release tracks one channel
-// and signing track, so a stable/legacy-track user could land on the wrong
-// build. Preferred is the CDN installer derived from the user's own update
-// feed (see manualDownloadUrlFor), which matches channel, track, and arch.
-const DOWNLOAD_PAGE_URL = 'https://github.com/genspark-ai/genoffice/releases/latest'
+
+// Where "get the latest version by hand" points for a build that cannot
+// self-update: no feed baked in, macOS without a signing identity (Squirrel.Mac
+// rejects unsigned updates), Linux without an AppImage. The platform serves first
+// installs and every manual reinstall from the same static directory the update
+// feed lives in, so a link and a feed can never disagree.
+//
+// Injected at package time (extraMetadata.genofficeDownloadPage, see
+// electron-builder.cjs) so a fork can move the page without editing source;
+// GENOFFICE_DOWNLOAD_PAGE does the same for an unpacked run.
+const DEFAULT_DOWNLOAD_PAGE_URL = 'https://ai-staff.folidaymall.com/download/office'
+
+function normalizeDownloadPage(value: unknown): string | null {
+  if (typeof value !== 'string' || !value.trim()) return null
+  try {
+    const url = new URL(value.trim())
+    if (url.protocol !== 'https:' || url.username || url.password) return null
+    return url.toString()
+  } catch {
+    return null
+  }
+}
+
+let cachedDownloadPageUrl: string | null = null
+
+/// Last-resort link only: preferred is the installer derived from the user's own
+/// update feed (manualDownloadUrlFor), which matches platform and arch.
+function downloadPageUrl(): string {
+  if (cachedDownloadPageUrl !== null) return cachedDownloadPageUrl
+  let injected: unknown = null
+  try {
+    const pkg = JSON.parse(
+      readFileSync(path.join(app.getAppPath(), 'package.json'), 'utf8'),
+    ) as Record<string, unknown> | null
+    injected = pkg && typeof pkg === 'object' ? pkg.genofficeDownloadPage : null
+  } catch {
+    // unpacked/dev run, or a package.json without the injected block
+  }
+  cachedDownloadPageUrl =
+    normalizeDownloadPage(process.env.GENOFFICE_DOWNLOAD_PAGE) ??
+    normalizeDownloadPage((injected as Record<string, unknown> | null)?.url) ??
+    DEFAULT_DOWNLOAD_PAGE_URL
+  return cachedDownloadPageUrl
+}
 
 /// Trusted HTTPS base URL baked into resources/app-update.yml. Manual download
 /// links are always rebuilt from this base rather than trusting URLs supplied
@@ -564,7 +603,12 @@ export async function checkForUpdatesNow(): Promise<void> {
       fakeShowAgain()
       return
     }
-    if (!updaterActive) {
+    // A packaged build can only self-update when electron-builder baked
+    // resources/app-update.yml in, which requires GENOFFICE_UPDATE_URL at build
+    // time. Without it, asking the feed would just fail — say so and send the
+    // user to the download page instead.
+    if (!updaterActive || updateFeedBaseUrl() === null) {
+      if (updaterActive) log('no app-update.yml in this build — self-update is unavailable')
       const { response } = await dialog.showMessageBox({
         type: 'info',
         title: tUpd(lang, 'updTitle'),
@@ -573,7 +617,7 @@ export async function checkForUpdatesNow(): Promise<void> {
         defaultId: 0,
         cancelId: 0,
       })
-      if (response === 1) void shell.openExternal(DOWNLOAD_PAGE_URL)
+      if (response === 1) void shell.openExternal(downloadPageUrl())
       return
     }
     dismissedVersion = null
@@ -725,7 +769,7 @@ export function initAutoUpdater(
       closeUpdateWindow()
     },
     onOpenDownload: () => {
-      void shell.openExternal(manualDownloadUrl ?? DOWNLOAD_PAGE_URL)
+      void shell.openExternal(manualDownloadUrl ?? downloadPageUrl())
     },
   }
 

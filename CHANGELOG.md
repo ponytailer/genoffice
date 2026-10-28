@@ -21,7 +21,20 @@
 
 ## [未发布]
 
-暂无。
+### 新增
+
+- **镜像发布与更新元数据**：新增 `npm run mirror`（`scripts/mirror-release.mjs`），把 GitHub
+  Release 的安装包校验 `SHA256SUMS.txt` 后用 rsync 推到公司静态目录，同时生成给下载页用的
+  `latest.json` / `releases.json`；按实际字节重算 `latest*.yml` 的 `sha512`，并用前向守卫拒绝
+  把已服务的版本降级（除非 `--force`）。目录布局与 nginx 要求见 `docs/release-and-update.md`。（`打包`）
+- **下载页地址可注入**：无法自更新的安装（没打包 feed、macOS 未签名、Linux deb）在
+  「检查更新」时直接引导到下载页，地址可由仓库变量 `DOWNLOAD_URL` 经
+  `extraMetadata.genofficeDownloadPage` 注入，默认指向平台下载页，不再指向上游仓库。（`shell`）
+
+### 修复
+
+- **没有更新源的安装点了「检查更新」会报错**：未打包 `app-update.yml` 的构建原本会去请求
+  不存在的 feed 并向用户报「检查更新失败」，现在改为直接提示去下载页手动安装。（`shell`）
 
 ## [0.1.1] - 2026-10-28
 

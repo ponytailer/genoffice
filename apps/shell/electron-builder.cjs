@@ -41,6 +41,10 @@ const fontCdnUrl = normalizeHttpsBaseUrl(
   'GENOFFICE_FONT_CDN_URL',
   process.env.GENOFFICE_FONT_CDN_URL,
 )
+const downloadUrl = normalizeHttpsBaseUrl(
+  'GENOFFICE_DOWNLOAD_URL',
+  process.env.GENOFFICE_DOWNLOAD_URL,
+)
 
 // GENOFFICE_MAC_X64=1 — opt into packaging the Intel (x64) dmg/zip alongside
 // arm64. Off by default: Intel packages must only ever ship signed with the
@@ -816,6 +820,11 @@ if (updateUrl) {
 // so the version and all injected feature settings survive together.
 const extraMetadata = {}
 if (fontCdnUrl) extraMetadata.genofficeFontCdn = { baseUrl: fontCdnUrl }
+// Where the app sends a user who has to install by hand (no feed in the build,
+// unsigned macOS, Linux deb). Defaults to the platform's download page in
+// src/main/updater.ts, so a build without this injection still links somewhere
+// useful rather than to the upstream project.
+if (downloadUrl) extraMetadata.genofficeDownloadPage = { url: downloadUrl }
 if (Object.keys(extraMetadata).length) config.extraMetadata = extraMetadata
 
 module.exports = config

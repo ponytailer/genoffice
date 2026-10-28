@@ -81,7 +81,10 @@ function releaseUploadDecision(candidate, current, { force = false, allowExistin
 /** electron-builder hashes each artifact when it is created, but the dmg is
  * notarized and stapled afterwards (afterAllArtifactBuild), which appends
  * the ticket; the feed written at the end still carries the pre-staple
- * sha512/size. Rewrite the entries of the given files from their bytes. */
+ * sha512/size. Rewrite the entries of the given files from their bytes — both
+ * the per-file entries and the legacy top-level path/sha512 pair that a client
+ * older than the `files:` list still verifies. A file absent from filesByName is
+ * left alone: callers commonly pass only the artifacts they know changed. */
 function refreshFeedEntries(text, filesByName) {
   const lines = text.split('\n')
   let current = null
@@ -97,6 +100,13 @@ function refreshFeedEntries(text, filesByName) {
     else if (/^\s+size:/.test(lines[i]))
       lines[i] = lines[i].replace(/size:.*/, `size: ${current.size}`)
     else if (!/^\s{4,}\S/.test(lines[i])) current = null
+  }
+  const pathLine = lines.findIndex((line) => /^path:\s*\S/.test(line))
+  const shaLine = lines.findIndex((line) => /^sha512:/.test(line))
+  if (pathLine !== -1 && shaLine !== -1) {
+    const name = /^path:\s*(\S+)/.exec(lines[pathLine])[1].split('/').pop()
+    const entry = filesByName[name]
+    if (entry) lines[shaLine] = `sha512: ${entry.sha512}`
   }
   return lines.join('\n')
 }

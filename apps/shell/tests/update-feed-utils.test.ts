@@ -117,4 +117,23 @@ describe('update-feed-utils', () => {
     expect(out).toContain('  - url: GenOffice-0.12.29-mac.zip\n    sha512: ZIP==\n    size: 10')
     expect(out).toContain('path: GenOffice-0.12.29-mac.zip\nsha512: ZIP==')
   })
+
+  it('also refreshes the legacy top-level path/sha512 pair', () => {
+    const feed = [
+      'version: 0.12.29',
+      'files:',
+      '  - url: GenOffice-0.12.29-mac.zip',
+      '    sha512: OLD==',
+      '    size: 1',
+      'path: GenOffice-0.12.29-mac.zip',
+      'sha512: OLD==',
+      "releaseDate: '2026-01-01T00:00:00.000Z'",
+    ].join('\n')
+    const out = refreshFeedEntries(feed, {
+      'GenOffice-0.12.29-mac.zip': { sha512: 'NEW==', size: 2 },
+    })
+    expect(out).toContain('  - url: GenOffice-0.12.29-mac.zip\n    sha512: NEW==\n    size: 2')
+    expect(out).toContain('path: GenOffice-0.12.29-mac.zip\nsha512: NEW==')
+    expect(out).toContain("releaseDate: '2026-01-01T00:00:00.000Z'")
+  })
 })

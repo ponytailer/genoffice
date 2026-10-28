@@ -148,8 +148,12 @@ jobs:
           if [ -n "$VERSION" ]; then
             extra+=("-c.extraMetadata.version=$VERSION")
           fi
-          # Signing is skipped with a warning when the secrets are absent, so a
-          # contributor fork produces unsigned installers instead of failing.
+          # With a Developer ID in the secrets this signs and notarizes. Without
+          # one, electron-builder.cjs falls back to an ad-hoc signature (`-`):
+          # an unsigned bundle whose nested Electron binaries keep their upstream
+          # signature fails `codesign --verify`, and Gatekeeper then reports a
+          # downloaded copy as "damaged" instead of offering the
+          # System Settings › Open Anyway escape hatch.
           if [ -n "$MAC_CSC_LINK" ]; then
             export CSC_LINK="$MAC_CSC_LINK"
             export CSC_KEY_PASSWORD="$MAC_CSC_KEY_PASSWORD"

@@ -55,6 +55,36 @@ const downloadUrl = normalizeHttpsBaseUrl(
 // switch.
 const includeMacX64 = process.env.GENOFFICE_MAC_X64 === '1'
 
+/**
+ * Ad-hoc signing is the fallback when no Developer ID Application identity is
+ * available (`CSC_LINK`/`CSC_NAME` unset and none valid in the keychain).
+ *
+ * Skipping the signature entirely is not neutral on Apple Silicon: the nested
+ * Electron binaries keep their upstream linker signature, so the outer bundle
+ * fails `codesign --verify` with "code has no resources but signature indicates
+ * they must be present". A downloaded copy is then reported by Gatekeeper as
+ * **damaged** — whose only offered remedy is Move to Trash — instead of the
+ * "cannot verify the developer" flow that lets the user allow it in
+ * System Settings. A self-consistent ad-hoc signature keeps that escape hatch.
+ * Real signing/notarization still needs a certificate; see GENOFFICE_MAC_X64's
+ * note about the company certificate for Intel artifacts.
+ */
+function developerIdAvailable() {
+  if (process.env.CSC_LINK || process.env.CSC_NAME) return true
+  if (process.platform !== 'darwin') return false
+  try {
+    const out = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], {
+      encoding: 'utf8',
+    })
+    // -v reports valid identities only: an expired certificate does not count
+    return /Developer ID Application/.test(out)
+  } catch {
+    return false
+  }
+}
+
+const adhocMacSigning = process.env.GENOFFICE_MAC_ADHOC !== '0' && !developerIdAvailable()
+
 // GENOFFICE_WIN_ARM64=1 — package the Windows ARM64 installer instead of x64.
 // CI runs it as a second electron-builder pass (own BUILD_DIR) after the
 // unchanged x64 pass, so the two never share an output dir or a sidecar path:
@@ -613,7 +643,10 @@ const config = {
       { target: 'zip', arch: includeMacX64 ? ['arm64', 'x64'] : ['arm64'] },
     ],
     category: 'public.app-category.productivity',
-    hardenedRuntime: true,
+    // ad-hoc fallback: `-` signs with no identity instead of leaving the bundle
+    // unsigned, and the hardened runtime is dropped because it refuses to load
+    // the ad-hoc-signed nested frameworks without disable-library-validation
+    ...(adhocMacSigning ? { identity: '-', hardenedRuntime: false } : { hardenedRuntime: true }),
     gatekeeperAssess: false,
     entitlements: 'build/entitlements.mac.plist',
     entitlementsInherit: 'build/entitlements.mac.plist',

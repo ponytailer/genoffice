@@ -115,6 +115,16 @@
 - 设置 › 通用里的「更新通道」与「自动检查更新」两项移除；「有可用更新」入口保留，启动后仍按
   现有配置静默检查。（`shell`）
 
+### 修复
+
+- macOS 包下载后提示「已损坏」：没有 Developer ID 证书时，electron-builder 原先完全跳过签名，
+  而包内的 Electron 二进制仍带着上游的 linker 签名，导致整包 `codesign --verify` 报
+  "code has no resources but signature indicates they must be present"，Gatekeeper 于是判为
+  「已损坏」（只能移到废纸篓）。现在无证书时改为 **ad-hoc 签名**（`identity: '-'`，同时关闭
+  hardened runtime，否则 ad-hoc 签名加载不了嵌套框架），整包校验通过，用户可走
+  「系统设置 › 隐私与安全性 › 仍要打开」，或用 `xattr -dr com.apple.quarantine` 解除隔离。
+  配了 Developer ID 的构建行为不变。（`打包`）
+
 ### 安全
 
 - 平台 API Key 只在主进程内存中缓存，按平台 token 记忆 30 秒；登出、重新登录、平台

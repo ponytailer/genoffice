@@ -578,7 +578,7 @@ export function AiChatPanel({
         aria-label={t('aiGensparkAccount')}
       />
       <header className="ai-panel-header">
-        <span className="ai-panel-title">Genspark</span>
+        <span className="ai-panel-title">CMLG AI</span>
         <div className="ai-panel-header-actions">
           <AiPanelSideButton
             lang={lang}

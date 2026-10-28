@@ -67,6 +67,8 @@
   品牌名变成可编辑文本，以后改名不用重画字形。（`shell`）
 - AI 面板标题前的品牌图标移除，六个编辑器只保留标题文字；面板糖叠后的侧边小按钮仍保留该图标。
   （`docs` `sheets` `slides` `pdf` `markdown` `html`）
+- 六个编辑器的 AI 面板标题统一为 **CMLG AI**（HTML / PDF / Markdown / Excel 此前仍硬编码旧厂商名）。
+  （`docs` `sheets` `slides` `pdf` `markdown` `html`）
 
 ### 修复
 

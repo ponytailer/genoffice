@@ -21,6 +21,8 @@
 
 ## [未发布]
 
+## [0.1.0] - 2026-10-28
+
 ### 新增
 
 - **镜像发布与更新元数据**：新增 `npm run mirror`（`scripts/mirror-release.mjs`），把 GitHub
@@ -30,16 +32,6 @@
 - **下载页地址可注入**：无法自更新的安装（没打包 feed、macOS 未签名、Linux deb）在
   「检查更新」时直接引导到下载页，地址可由仓库变量 `DOWNLOAD_URL` 经
   `extraMetadata.genofficeDownloadPage` 注入，默认指向平台下载页，不再指向上游仓库。（`shell`）
-
-### 修复
-
-- **没有更新源的安装点了「检查更新」会报错**：未打包 `app-update.yml` 的构建原本会去请求
-  不存在的 feed 并向用户报「检查更新失败」，现在改为直接提示去下载页手动安装。（`shell`）
-
-## [0.1.1] - 2026-10-28
-
-### 新增
-
 - **平台账号体系**：设置里的账户改为登录「CMLG AI 数字员工平台」
   (`ai-staff.folidaymall.com`)。登录窗捕获平台的 `ultrarag_auth` 会话，用 `/api/auth/me`
   校验后存到 `~/.genoffice/platform.json`，全应用的用户名、邮箱、头像统一取这份资料。
@@ -98,9 +90,18 @@
 
 ### 修复
 
+- **没有更新源的安装点了「检查更新」会报错**：未打包 `app-update.yml` 的构建原本会去请求
+  不存在的 feed 并向用户报「检查更新失败」，现在改为直接提示去下载页手动安装。（`shell`）
 - 修复从菜单/右键删除表格列没有反应的问题：命令表此前直接返回了命令工厂函数而不是
   命令本身，点击后不会产生任何改动。同时修正「删除列保留列宽网格」测试里的节点类型
   标注，使该套测试重新纳入类型检查。（`docs`）
+- macOS 包下载后提示「已损坏」：没有 Developer ID 证书时，electron-builder 原先完全跳过签名，
+  而包内的 Electron 二进制仍带着上游的 linker 签名，导致整包 `codesign --verify` 报
+  "code has no resources but signature indicates they must be present"，Gatekeeper 于是判为
+  「已损坏」（只能移到废纸篓）。现在无证书时改为 **ad-hoc 签名**（`identity: '-'`，同时关闭
+  hardened runtime，否则 ad-hoc 签名加载不了嵌套框架），整包校验通过，用户可走
+  「系统设置 › 隐私与安全性 › 仍要打开」，或用 `xattr -dr com.apple.quarantine` 解除隔离。
+  配了 Developer ID 的构建行为不变。（`打包`）
 
 ### 移除
 
@@ -114,16 +115,6 @@
   使用统计，PRIVACY.md、README 及各语言帮助文档同步更新。（`shell` `文档`）
 - 设置 › 通用里的「更新通道」与「自动检查更新」两项移除；「有可用更新」入口保留，启动后仍按
   现有配置静默检查。（`shell`）
-
-### 修复
-
-- macOS 包下载后提示「已损坏」：没有 Developer ID 证书时，electron-builder 原先完全跳过签名，
-  而包内的 Electron 二进制仍带着上游的 linker 签名，导致整包 `codesign --verify` 报
-  "code has no resources but signature indicates they must be present"，Gatekeeper 于是判为
-  「已损坏」（只能移到废纸篓）。现在无证书时改为 **ad-hoc 签名**（`identity: '-'`，同时关闭
-  hardened runtime，否则 ad-hoc 签名加载不了嵌套框架），整包校验通过，用户可走
-  「系统设置 › 隐私与安全性 › 仍要打开」，或用 `xattr -dr com.apple.quarantine` 解除隔离。
-  配了 Developer ID 的构建行为不变。（`打包`）
 
 ### 安全
 

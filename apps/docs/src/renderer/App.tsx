@@ -760,7 +760,7 @@ const TABLE_MENU_COMMANDS: Partial<Record<MenuCommand, (widthPx: number) => Comm
   'table-insert-cols-left': (w) => insertRowsOrColumns(1, 'left', w),
   'table-insert-cols-right': (w) => insertRowsOrColumns(1, 'right', w),
   'table-delete-table': () => deleteTable,
-  'table-delete-columns': () => deleteTableColumn(),
+  'table-delete-columns': () => deleteTableColumn,
   'table-delete-rows': () => deleteRow,
   'table-select-table': () => selectTablePart('table'),
   'table-select-column': () => selectTablePart('column'),
@@ -5825,6 +5825,9 @@ export function App() {
         case 'save-as':
           void save(true)
           break
+        case 'name-with-ai':
+          void nameWithAi()
+          break
         case 'undo':
           editor?.chain().focus().undo().run()
           break
@@ -6006,6 +6009,7 @@ export function App() {
     openFile,
     openRecent,
     save,
+    nameWithAi,
     exportPdf,
     exportHtml,
     exportMarkdown,

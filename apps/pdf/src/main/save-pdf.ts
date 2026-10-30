@@ -13,12 +13,20 @@ import {
   PDFRef,
   PDFSignature,
   PDFString,
+  StandardFonts,
   TextAlignment,
   degrees,
   rgb,
 } from 'pdf-lib'
 import type { PDFPage } from 'pdf-lib'
 import { VISUAL_SIGNATURE_CONTENT_PREFIX } from '../shared/ipc'
+import {
+  decryptDocument,
+  encryptDocument,
+  encryptDocumentWithOriginalProtection,
+  type OriginalProtection,
+} from './pdf-crypt'
+import { applyAttachments } from './pdf-attachments'
 import type {
   BlankPageInput,
   DrawingInput,
@@ -30,6 +38,7 @@ import type {
   MarkupInput,
   MetadataInput,
   NoteReplyTarget,
+  PdfEncryptionInput,
   SavePdfRequest,
   StaticFormFillRecord,
   TextEditFailure,
@@ -613,13 +622,15 @@ const CARET_DEPTH = 6
  *  Polygon); notes get an AP icon so Preview (Quartz) draws them instead of nothing.
  *  The AP is what makes a saved shape visible: pdf.js has no default appearance for
  *  a Caret and pdfium's generator covers neither Caret nor Polygon, so both would
- *  come back blank in GenOffice, Preview, Chrome or Edge. */
+ *  come back blank in CMLG Office, Preview, Chrome or Edge. */
 function addDrawing(
   pdfDoc: PDFDocument,
   page: PDFPage,
   d: DrawingInput,
   /** localId → registered ref of notes written earlier in this request (reply parenting) */
   noteRefs?: Map<string, PDFRef>,
+  /** the label font's ref for measure drawings (their appearance names /F1) */
+  measureFontRef?: PDFRef,
 ): void {
   if (d.kind === 'image') return // handled by addImageStamp (needs async embed)
   if (d.kind === 'link') return // handled by addLinkAnnot (needs the page list)
@@ -684,7 +695,7 @@ function addDrawing(
       C: d.color,
       AP: { N: pdfDoc.context.register(ap) },
     })
-    annot.set(PDFName.of('T'), PDFHexString.fromText('GenOffice'))
+    annot.set(PDFName.of('T'), PDFHexString.fromText('CMLG Office'))
     appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
     return
   }
@@ -716,7 +727,7 @@ function addDrawing(
       BS: { W: d.width },
       AP: { N: pdfDoc.context.register(ap) },
     })
-    annot.set(PDFName.of('T'), PDFHexString.fromText('GenOffice'))
+    annot.set(PDFName.of('T'), PDFHexString.fromText('CMLG Office'))
     appendAnnot(pdfDoc, page, pdfDoc.context.register(annot))
     return
   }
@@ -752,6 +763,28 @@ function addDrawing(
     ops.push(`${num(fx)} ${num(fy)} m ${num(tx)} ${num(ty)} l S`)
     xs = [fx, tx]
     ys = [fy, ty]
+    if (d.kind === 'measure') {
+      // the label rides the line's own angle at its midpoint, flipped into
+      // left-to-right when the line runs right-to-left; the whole appearance
+      // rotates with the page like any other annotation's. The label takes the
+      // drawing's own colour, matching the on-screen preview.
+      const mx = (fx + tx) / 2
+      const my = (fy + ty) / 2
+      const ang = Math.atan2(ty - fy, tx - fx)
+      const flip = Math.abs(ang) > Math.PI / 2
+      const tilt = flip ? ang + Math.PI : ang
+      ops.push(`BT ${r} ${g} ${b} rg /F1 9 Tf`)
+      ops.push(
+        `${num(Math.cos(tilt))} ${num(Math.sin(tilt))} ${num(-Math.sin(tilt))} ${num(Math.cos(tilt))} ${num(mx)} ${num(my + 6)} Tm`,
+      )
+      const esc = d.label.replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)')
+      ops.push(`(${esc}) Tj ET`)
+      // Helvetica 9pt averages ~4.5pt per glyph, and the extent follows the
+      // label's tilt — an axis-aligned half-width clipped steep lines
+      const halfW = (d.label.length * 4.5) / 2
+      xs.push(mx + Math.cos(tilt) * halfW, mx - Math.cos(tilt) * halfW)
+      ys.push(my + 6 + Math.sin(tilt) * halfW, my + 6 - Math.sin(tilt) * halfW)
+    }
     if (d.kind === 'arrow') {
       const ang = Math.atan2(ty - fy, tx - fx)
       const len = Math.max(9, d.width * 4.5)
@@ -772,7 +805,16 @@ function addDrawing(
     Math.max(...xs) + pad,
     Math.max(...ys) + pad,
   ]
-  const ap = pdfDoc.context.stream(ops.join('\n'), { Type: 'XObject', Subtype: 'Form', BBox: rect })
+  // Preview and Acrobat synthesize nothing for an unresolvable font reference:
+  // the label's /F1 must be reachable through the form's /Resources
+  const ap = pdfDoc.context.stream(ops.join('\n'), {
+    Type: 'XObject',
+    Subtype: 'Form',
+    BBox: rect,
+    ...(d.kind === 'measure' && measureFontRef
+      ? { Resources: { Font: { F1: measureFontRef } } }
+      : {}),
+  })
   const annot = pdfDoc.context.obj({
     Type: 'Annot',
     Subtype: subtype,
@@ -786,6 +828,10 @@ function addDrawing(
   if (d.kind === 'ink') annot.set(PDFName.of('InkList'), pdfDoc.context.obj(d.paths))
   if (d.kind === 'line' || d.kind === 'arrow') {
     annot.set(PDFName.of('L'), pdfDoc.context.obj([...d.from, ...d.to]))
+  }
+  if (d.kind === 'measure') {
+    annot.set(PDFName.of('L'), pdfDoc.context.obj([...d.from, ...d.to]))
+    annot.set(PDFName.of('Contents'), PDFHexString.fromText(d.label))
   }
   annot.set(PDFName.of('T'), PDFHexString.fromText('CMLG Office'))
   if (d.kind === 'ink') setVisualSignatureMetadata(annot, d.formFieldName)
@@ -1398,6 +1444,14 @@ function finalPageIndex(request: SavePdfRequest, p: number): number | null {
   return p - del.filter((d) => d < p).length
 }
 
+/** password the saved output accepts, for the read-back verification of content edits */
+function savedOutputPassword(request: SavePdfRequest): string | undefined {
+  // an unchanged protection keeps the password the source file already had; a
+  // protection change writes the new user password; a plain save has none
+  if (request.protectionDirty === false) return request.decryption?.userPassword
+  return request.encryption?.userPassword
+}
+
 /**
  * Read-back verification of applied content-stream edits against the final bytes.
  * Anything that fails here would have been silent data loss; the caller aborts the
@@ -1419,7 +1473,7 @@ async function verifyContentEdits(
       const pageIndex = finalPageIndex(request, e.pageIndex)
       return pageIndex === null ? [] : [{ pageIndex, newText: e.newText }]
     })
-    failures.push(...(await verifyTextEdits(bytes, remapped)))
+    failures.push(...(await verifyTextEdits(bytes, remapped, savedOutputPassword(request))))
   }
   const appliedInserts = (request.textInserts ?? []).filter(
     (_insert, editIndex) =>
@@ -1431,7 +1485,7 @@ async function verifyContentEdits(
       const pageIndex = finalPageIndex(request, insert.pageIndex)
       return pageIndex === null ? [] : [{ pageIndex, newText: insert.text }]
     })
-    failures.push(...(await verifyTextEdits(bytes, remapped)))
+    failures.push(...(await verifyTextEdits(bytes, remapped, savedOutputPassword(request))))
   }
   const appliedImages = (request.imageEdits ?? []).filter(
     (e, i) => e.kind !== 'deleteImage' && !skips.skippedImageEdits.some((s) => s.editIndex === i),
@@ -1496,6 +1550,29 @@ export async function applySaveRequest(
   bytes: Uint8Array,
   request: SavePdfRequest,
 ): Promise<AppliedSaveRequest> {
+  // A protected session works on the document's plain form: the bytes on disk are
+  // the protected output of the previous save, and the session's edits only make
+  // sense against the plaintext (a failure here means the file changed underneath
+  // the session — surfaced to the user as a save error).
+  const sourcePassword = request.decryption?.userPassword ?? request.encryption?.userPassword
+  let originalProtection: OriginalProtection | null = null
+  if (sourcePassword !== undefined) {
+    const opened = await decryptDocument(bytes, sourcePassword)
+    bytes = opened.bytes
+    originalProtection = opened.protection ?? null
+  }
+  // A save that does not change protection re-protects under the source's own
+  // entries and file key: deriving fresh entries would replace both passwords
+  // with the one password this session knows. Only a dialog save sets
+  // protectionDirty, and only that one may write new entries.
+  const preserved = request.protectionDirty === false ? originalProtection : null
+  const protection: { preserved: OriginalProtection } | { fresh: PdfEncryptionInput } | null =
+    preserved !== null ? { preserved } : request.encryption ? { fresh: request.encryption } : null
+  const protect = (doc: PDFDocument): void => {
+    if (protection === null) return
+    if ('preserved' in protection) encryptDocumentWithOriginalProtection(doc, protection.preserved)
+    else encryptDocument(doc, protection.fresh)
+  }
   let skippedTextEdits: TextEditFailure[] = []
   let skippedTextInserts: TextInsertFailure[] = []
   let skippedImageEdits: ImageEditFailure[] = []
@@ -1555,12 +1632,19 @@ export async function applySaveRequest(
     if (page && validMarkup(m)) addMarkup(pdfDoc, page, m)
   }
   const noteRefs = new Map<string, PDFRef>()
-  for (const d of request.drawings ?? []) {
+  // the measure label's font: standard-14 Helvetica, no bytes to embed — but
+  // only when a measure drawing is actually written, so saves without one
+  // leave the document's font dict untouched
+  const drawings = request.drawings ?? []
+  const measureFontRef = drawings.some((d) => d.kind === 'measure')
+    ? (await pdfDoc.embedFont(StandardFonts.Helvetica)).ref
+    : undefined
+  for (const d of drawings) {
     const page = pages[d.pageIndex]
     if (!page) continue
     if (d.kind === 'image') await addImageStamp(pdfDoc, page, d)
     else if (d.kind === 'link') addLinkAnnot(pdfDoc, pages, page, d)
-    else addDrawing(pdfDoc, page, d, noteRefs)
+    else addDrawing(pdfDoc, page, d, noteRefs, measureFontRef)
   }
   // Note content edits go after the drawings: replies added above locate their /IRT
   // parent by its old contents, which an earlier in-place rewrite would break. An
@@ -1634,11 +1718,33 @@ export async function applySaveRequest(
         PDFHexString.fromText(JSON.stringify(staticFormFills)),
       )
   }
+  if (request.attachments) applyAttachments(pdfDoc, request.attachments)
   refreshFieldAppearances(pdfDoc)
+  // Protection serializes with the document: strings and streams are encrypted in
+  // place, so no object/xref stream may be created after this point (all saves here
+  // already run with useObjectStreams off). Redaction below re-serializes a cleaned
+  // graph, which would drop the trailer entry — protect that output instead.
+  // Redaction is a PDFium pass and cannot read an encrypted file, so with
+  // redactions the protection is written after the reload below instead.
+  if (protection !== null && !request.redactions?.length) {
+    // flush first: pdf-lib embeds fonts and images only at save/flush time, and
+    // a payload created after this pass would land in the file as plaintext
+    // inside a document declared encrypted
+    await pdfDoc.flush()
+    protect(pdfDoc)
+  }
   let saved = await pdfDoc.save({ useObjectStreams: false, updateFieldAppearances: false })
   // Redaction is the final serializer. EmbedPDF's full SaveAsCopy writes only the
   // reachable cleaned object graph; no subsequent pdf-lib pass can revive old streams.
-  if (request.redactions?.length) saved = await redactPdf(saved, request.redactions)
+  if (request.redactions?.length) {
+    saved = await redactPdf(saved, request.redactions)
+    if (protection !== null) {
+      const cleaned = await PDFDocument.load(saved, { updateMetadata: false })
+      await cleaned.flush()
+      protect(cleaned)
+      saved = await cleaned.save({ useObjectStreams: false })
+    }
+  }
   return {
     bytes: saved,
     skippedTextEdits,

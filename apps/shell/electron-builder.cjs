@@ -17,6 +17,11 @@
  * Official release jobs inject it through extraMetadata so the endpoint stays
  * out of source. Without it, font download prompts/catalog entries are hidden;
  * users can still install local font files.
+ *
+ * Electron dist downloads default to the npmmirror mirror: local packaging
+ * (especially under sudo, which strips ELECTRON_MIRROR and proxy variables)
+ * would otherwise hit github.com directly and time out. CI and anyone with
+ * unrestricted GitHub access overrides this by exporting ELECTRON_MIRROR.
  */
 
 const { execFileSync } = require('node:child_process')
@@ -511,6 +516,12 @@ const config = {
   // never leave a stale hard-coded pin behind (packaging would silently ship
   // the old runtime).
   electronVersion: require('electron/package.json').version,
+  // Mirror for the per-arch electron dist zips electron-builder downloads at
+  // packaging time (the npm-installed dist only covers the host arch).
+  // ELECTRON_MIRROR wins so CI can point back at the default source.
+  electronDownload: {
+    mirror: process.env.ELECTRON_MIRROR || 'https://npmmirror.com/mirrors/electron/',
+  },
   directories: {
     output: process.env.BUILD_DIR || 'release',
   },

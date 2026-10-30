@@ -133,6 +133,18 @@ Without Apple or Windows signing credentials in the environment these produce
 unsigned artifacts: code signing and notarization are skipped with a warning
 rather than failing. That is the expected result for a contributor build.
 
+Never run `npm run dist` under `sudo`. It is unnecessary (the build writes to
+your workspace and the user-level electron caches) and destructive in a
+specific way: sudo strips `ELECTRON_MIRROR`, `HTTPS_PROXY` and every other
+environment variable, so the per-arch electron dist downloads fall back to
+hitting github.com directly — which times out from networks without GitHub
+access. The config defaults those downloads to the npmmirror mirror
+(`apps/shell/electron-builder.cjs`, `electronDownload.mirror`), so a plain
+user build needs no environment setup; `ELECTRON_MIRROR` still overrides it.
+Artifacts owned by root in `apps/shell/release` are the telltale of an
+accidental sudo run — `sudo chown -R $(id -u):$(id -g) apps/shell/release`
+reclaims them.
+
 On macOS, packaging from a repository that lives on an exFAT/FAT32 volume (an
 external USB drive, for example) fails because the OS writes hidden `._`
 AppleDouble sidecar files next to the build output and electron-builder trips
@@ -150,6 +162,69 @@ plain `npm run build:all` compiles it with the host toolchain into
 long as the host architecture matches the packaged one (`GENOFFICE_WIN_ARM64=1`
 still needs a cross build for `aarch64-pc-windows-msvc`).
 
+### Intel (x64) macOS builds
+
+Mac packaging is arm64-only unless `GENOFFICE_MAC_X64=1` is set — that single
+variable is the switch:
+
+```bash
+GENOFFICE_MAC_X64=1 npm run dist -- --target mac
+```
+
+The switch is not implied by the host: on an Intel Mac the plain
+`npm run dist -- --target mac` still emits an arm64 installer, which will not
+launch on that machine. Intel hardware is the reason to pass the variable, not
+a substitute for it.
+
+It produces **both** architectures as separate packages, never a universal
+one: `CMLG-Office-<version>-arm64.dmg` and `CMLG-Office-<version>-x64.dmg`,
+plus the matching zips in one `latest-mac.yml` (electron-updater picks by
+`process.arch`). The build host does not have to match: electron-builder
+fetches the Electron distribution for each arch, and the `lipo` and `swiftc`
+steps below emit both slices from either kind of Mac.
+
+Both packages share one `extraResources` path, so the native helpers inside
+them must carry both slices or the Intel dmg would ship an arm64-only binary
+and every workbook open would fail there:
+
+- the xlsx sidecar has to be a `lipo` fat binary. `npm run dist` builds it
+  itself on a macOS host, so this is only a manual step under `--no-build`:
+
+  ```bash
+  npm run native:build:universal -w @genoffice/sheets
+  ```
+
+  It compiles both Apple targets, so both rustup targets have to be installed
+  once (`rustup target add x86_64-apple-darwin aarch64-apple-darwin`).
+
+- the OCR helper is recompiled by `beforePack` when it is not already
+  universal; it needs `swiftc` and `lipo` from the Xcode command line tools.
+
+`beforePack` asserts both before packing (`assertUniversalSidecar` /
+`assertUniversalVisionOcr`) and fails the build with that exact remedy rather
+than shipping a silently broken Intel app. Check a build's helpers with:
+
+```bash
+lipo -archs apps/sheets/native/xlsx-engine/target/release/xlsx-sidecar
+lipo -archs packages/pdf2docx/ocr-helper/vision-ocr
+# both print: x86_64 arm64
+```
+
+To build **only** the Intel package, name the targets after `--` and keep the
+switch on — the switch is also what turns on the universal-binary assertions
+above, so leaving it off would produce an x64 build nobody checked:
+
+```bash
+GENOFFICE_MAC_X64=1 npm run dist -- --target mac -- dmg:x64 zip:x64
+```
+
+Signing behaves the same as the arm64 default: with no Developer ID identity
+the bundle gets an ad-hoc signature and notarization is skipped with a warning
+(`GENOFFICE_MAC_ADHOC=0` disables the fallback). Note the policy in
+`apps/shell/electron-builder.cjs`: Intel artifacts are only meant to ship
+signed with the company certificate, so a locally built x64 dmg is for
+smoke-testing, not for publishing.
+
 ## Environment variables
 
 None are required — the apps run with all of these unset. They exist for
@@ -158,6 +233,9 @@ testing and local overrides:
 | Variable                                                                                          | Effect                                                                           |
 | ------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | `BUILD_DIR`                                                                                       | Override the electron-builder output directory (default `apps/shell/release`)    |
+| `GENOFFICE_MAC_X64`                                                                               | `1` also packages the Intel x64 mac dmg/zip (default: arm64 only)                |
+| `GENOFFICE_WIN_ARM64`                                                                             | `1` packages the Windows ARM64 installer instead of x64                          |
+| `GENOFFICE_MAC_ADHOC`                                                                             | `0` disables the ad-hoc signing fallback when no Developer ID is available       |
 | `GENOFFICE_USER_DATA`                                                                             | Override the Electron userData directory (test isolation)                        |
 | `GENOFFICE_LANG`                                                                                  | Force the UI language instead of following the OS locale                         |
 | `GENOFFICE_FAKE_UPDATE`                                                                           | Exercise the updater UI without a real release feed                              |

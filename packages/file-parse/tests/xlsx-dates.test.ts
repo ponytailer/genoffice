@@ -121,11 +121,26 @@ describe('formatSerial', () => {
     expect(formatSerial(43830, date, true)).toBe('2024-01-01') // 1900-system 45292 minus the 1462-day offset
   })
 
+  it('does not round a date-only value into the following day', () => {
+    expect(formatSerial(45292.9999999, date, false)).toBe('2024-01-01')
+    expect(formatSerial(59.9999999, date, false)).toBe('1900-02-28')
+    expect(formatSerial(60.9999999, date, false)).toBe('1900-02-29')
+    expect(formatSerial(0.9999999, date, true)).toBe('1904-01-01')
+  })
+
   it('renders time fractions, rounding to the second and carrying past midnight', () => {
     expect(formatSerial(45292.5, dateTime, false)).toBe('2024-01-01 12:00:00')
     expect(formatSerial(0.75, time, false)).toBe('18:00')
     expect(formatSerial(45292.9999999, dateTime, false)).toBe('2024-01-02 00:00:00')
     expect(formatSerial(1.5, elapsed, false)).toBe('36:00:00')
+  })
+
+  it('returns null past the last representable calendar day', () => {
+    expect(formatSerial(45000, date, false)).toBe('2023-03-15')
+    expect(formatSerial(2958465, date, false)).toBe('9999-12-31')
+    expect(formatSerial(2958466, date, false)).toBeNull()
+    expect(formatSerial(1e9, date, false)).toBeNull()
+    expect(formatSerial(1e9, date, true)).toBeNull()
   })
 
   it('renders elapsed durations in their own unit, not always h:mm:ss (#1479)', () => {
@@ -247,6 +262,26 @@ describe('xlsxToText date cells', () => {
       sheetXml: '<row r="1"><c r="A1" s="0"><v>0</v></c><c r="B1" s="0"><v>43830</v></c></row>',
     })
     expect(await xlsxToText(bytes)).toContain('1904-01-01 | 2024-01-01')
+  })
+
+  it('keeps the stored calendar day when a date-only cell is close to midnight', async () => {
+    const bytes = await workbook({
+      xfs: '<xf numFmtId="14"/><xf numFmtId="22"/>',
+      sheetXml:
+        '<row r="1"><c r="A1" s="0"><v>45292.9999999</v></c>' +
+        '<c r="B1" s="1"><v>45292.9999999</v></c></row>',
+    })
+    expect(await xlsxToText(bytes)).toBe('# S\n2024-01-01 | 2024-01-02 00:00')
+  })
+
+  it('keeps the raw serial when a date value is past the calendar range', async () => {
+    const bytes = await workbook({
+      xfs: '<xf numFmtId="14"/>',
+      sheetXml:
+        '<row r="1"><c r="A1" s="0"><v>1000000000</v></c>' +
+        '<c r="B1" s="0"><v>45000</v></c></row>',
+    })
+    expect(await xlsxToText(bytes)).toContain('1000000000 | 2023-03-15')
   })
 
   it('keeps the raw serial when the style index is out of range or the value is not numeric', async () => {

@@ -243,29 +243,18 @@ function deriveKey(
   const padded = paddedPassword(password)
 
   if (revision <= 4) {
-    const keyLength = Math.min(Math.max(uintOf(encrypt, 'Length'), 40), 128) / 8
+    // /Length is optional: V4 files take it from the crypt filter (bytes), older ones mean 40
+    const declared = uintOf(encrypt, 'Length') || (revision === 4 ? filterKeyBits(encrypt) : 40)
+    const keyLength = Math.min(Math.max(declared, 40), 128) / 8
     const o = bytesOf(encrypt, 'O')
     const u = bytesOf(encrypt, 'U')
     const p = uintOf(encrypt, 'P')
     const encryptMetadata = readEncryptMetadata(encrypt)
     const cfms = cfmsOf(encrypt)
     const compareLength = revision >= 3 ? 16 : u.length
-    // the password as the user's (Algorithm 2 + 4/5)
-    const userKey = legacyFileKey(padded, o, p, id0, keyLength, revision, encryptMetadata)
-    const userExpect = legacyExpectation(userKey, id0, revision)
-    if (equal(userExpect.subarray(0, compareLength), u.subarray(0, compareLength))) {
-      return {
-        derived: {
-          revision: revision as 2 | 3 | 4,
-          fileKey: userKey,
-          streamCfm: cfms.stream,
-          stringCfm: cfms.string,
-        },
-        unlockedAs: 'user',
-      }
-    }
-    // the password may still be the owner's (Algorithm 7/8): it decrypts /O
-    // back into the padded user password, which yields the file key
+    // the owner's password first (Algorithm 7/8): one that is also the user's
+    // (the usual protection with a single password) unlocks as the owner. It
+    // decrypts /O back into the padded user password, which yields the file key
     const ownerKey = legacyOwnerKey(padded, keyLength, revision)
     const recovered =
       revision >= 3
@@ -273,17 +262,31 @@ function deriveKey(
         : rc4(ownerKey, o.subarray(0, 32))
     const ownerFileKey = legacyFileKey(recovered, o, p, id0, keyLength, revision, encryptMetadata)
     const ownerExpect = legacyExpectation(ownerFileKey, id0, revision)
-    if (!equal(ownerExpect.subarray(0, compareLength), u.subarray(0, compareLength))) {
+    if (equal(ownerExpect.subarray(0, compareLength), u.subarray(0, compareLength))) {
+      return {
+        derived: {
+          revision: revision as 2 | 3 | 4,
+          fileKey: ownerFileKey,
+          streamCfm: cfms.stream,
+          stringCfm: cfms.string,
+        },
+        unlockedAs: 'owner',
+      }
+    }
+    // then as the user's (Algorithm 2 + 4/5)
+    const userKey = legacyFileKey(padded, o, p, id0, keyLength, revision, encryptMetadata)
+    const userExpect = legacyExpectation(userKey, id0, revision)
+    if (!equal(userExpect.subarray(0, compareLength), u.subarray(0, compareLength))) {
       throw new WrongPasswordError()
     }
     return {
       derived: {
         revision: revision as 2 | 3 | 4,
-        fileKey: ownerFileKey,
+        fileKey: userKey,
         streamCfm: cfms.stream,
         stringCfm: cfms.string,
       },
-      unlockedAs: 'owner',
+      unlockedAs: 'user',
     }
   }
 
@@ -294,6 +297,20 @@ function deriveKey(
   const oe = bytesOf(encrypt, 'OE')
   const pw = passwordBytes(password)
   const cfms = cfmsOf(encrypt)
+  // the owner's password first, as for the older revisions
+  const ownerValidation = r6Hash(revision6, pw, o.subarray(32, 40), u.subarray(0, 48))
+  if (equal(ownerValidation, o.subarray(0, 32))) {
+    const keyHash = r6Hash(revision6, pw, o.subarray(40, 48), u.subarray(0, 48))
+    return {
+      derived: {
+        revision: revision6,
+        fileKey: aes256DecryptNoPad(keyHash, oe),
+        stmIdentity: cfms.stream === 'Identity',
+        strIdentity: cfms.string === 'Identity',
+      },
+      unlockedAs: 'owner',
+    }
+  }
   const userValidation = r6Hash(revision6, pw, u.subarray(32, 40), new Uint8Array(0))
   if (equal(userValidation, u.subarray(0, 32))) {
     // the file key travels in /UE, encrypted under the key-salt hash
@@ -308,20 +325,18 @@ function deriveKey(
       unlockedAs: 'user',
     }
   }
-  const ownerValidation = r6Hash(revision6, pw, o.subarray(32, 40), u.subarray(0, 48))
-  if (equal(ownerValidation, o.subarray(0, 32))) {
-    const keyHash = r6Hash(revision6, pw, o.subarray(40, 48), u.subarray(0, 48))
-    return {
-      derived: {
-        revision: revision6,
-        fileKey: aes256DecryptNoPad(keyHash, oe),
-        stmIdentity: cfms.stream === 'Identity',
-        strIdentity: cfms.string === 'Identity',
-      },
-      unlockedAs: 'owner',
-    }
-  }
   throw new WrongPasswordError()
+}
+
+/** key bits from the stream crypt filter's /Length (bytes; a few writers put bits) */
+function filterKeyBits(encrypt: PDFDict): number {
+  const stmF = encrypt.get(PDFName.of('StmF'))
+  const filterName = stmF instanceof PDFName ? stmF.asString().slice(1) : 'StdCF'
+  const cf = encrypt.get(PDFName.of('CF'))
+  const filter = cf instanceof PDFDict ? cf.get(PDFName.of(filterName)) : undefined
+  const length = filter instanceof PDFDict ? uintOf(filter, 'Length') : 0
+  if (length === 0) return 128
+  return length >= 40 ? length : length * 8
 }
 
 /** the cipher each payload class runs through, per /StmF and /StrF (§7.6.3.2) */
@@ -777,7 +792,7 @@ function encryptDictFor(context: PDFDocument['context'], entries: EncryptEntries
     Filter: entries.filter,
     V: entries.v,
     R: entries.r,
-    Length: entries.length,
+    ...(entries.length >= 40 ? { Length: entries.length } : {}),
     P: entries.p,
     O: PDFHexString.of(hex(entries.o)),
     U: PDFHexString.of(hex(entries.u)),

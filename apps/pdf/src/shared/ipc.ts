@@ -2,11 +2,17 @@ import type { AiPanelPrefs } from '@genoffice/ui'
 import type { Lang } from '@genoffice/i18n'
 import type { AiSettings, AiStreamChunk, AiStreamRequest } from '@genoffice/ai-provider'
 import type { PrintDuplex, PrintJobOptions, PrinterInfo } from '@genoffice/electron-utils/print-job'
+import type { PrinterOption } from '@genoffice/electron-utils/printer-options'
 export type { PrintDuplex, PrintJobOptions, PrinterInfo }
+export type { PrinterOption }
+
+/** largest slice readFileChunk hands over IPC; the renderer loops over them */
+export const PDF_READ_CHUNK_BYTES = 8 * 1024 * 1024
 
 export const PDF_CHANNELS = {
   consumePending: 'pdf:consume-pending',
   readFile: 'pdf:read-file',
+  readFileChunk: 'pdf:read-file-chunk',
   decryptPdf: 'pdf:decrypt',
   save: 'pdf:save',
   pickAttachmentFile: 'pdf:pick-attachment-file',
@@ -35,6 +41,7 @@ export const PDF_CHANNELS = {
   setPageSize: 'pdf:set-page-size',
   splitPages: 'pdf:split-pages',
   cropPages: 'pdf:crop-pages',
+  restoreFile: 'pdf:restore-file',
   exportImages: 'pdf:export-images',
   convertOffice: 'pdf:convert-office',
   createDocument: 'pdf:create-document',
@@ -57,6 +64,8 @@ export const PDF_CHANNELS = {
   saveAsFlow: 'pdf:save-as-flow',
   printRequest: 'pdf:print-request',
   print: 'pdf:print',
+  printFile: 'pdf:print-file',
+  printerOptions: 'pdf:printer-options',
   printers: 'pdf:printers',
   fileRenamed: 'pdf:file-renamed',
   getLanguage: 'app:get-language',
@@ -65,6 +74,7 @@ export const PDF_CHANNELS = {
   themeChanged: 'app:theme-changed',
   getAiPanelPrefs: 'app:get-ai-panel-prefs',
   aiPanelPrefsChanged: 'app:ai-panel-prefs-changed',
+  authorNameChanged: 'app:author-name-changed',
 } as const
 
 export const VISUAL_SIGNATURE_CONTENT_PREFIX = 'CMLG Office visual signature field: '
@@ -374,7 +384,7 @@ export type DrawingInput =
       color: [number, number, number]
       at: [number, number]
       contents: string
-      /** Annotation author (/T); omitted → 'CMLG Office' */
+      /** Annotation author (/T); omitted → the request's annotationAuthor */
       author?: string
       /** Creation time (ms since epoch) → /CreationDate and /M; omitted → save time */
       createdMs?: number
@@ -767,6 +777,9 @@ export interface SavePdfRequest {
       from `encryption.userPassword`. */
   decryption?: { userPassword: string }
   markups: MarkupInput[]
+  /** Author (/T) of the markups and drawings this save adds; a note keeps its own
+      author when it has one. Omitted → 'GenOffice' */
+  annotationAuthor?: string
   /** Saved markup annotations to remove (applied before every other stage) */
   annotDeletes?: AnnotDeleteInput[]
   drawings: DrawingInput[]
@@ -933,6 +946,14 @@ export type ReplacePagesResult =
   | { ok: true; canceled: true }
   | { ok: false; error: string }
 
+/** The file put back as it was around a change written in place (Undo and Redo of that change) */
+export interface RestoreFileRequest {
+  path: string
+  bytes: ArrayBuffer
+}
+
+export type RestoreFileResult = { ok: true } | { ok: false; error: string }
+
 /** Resize all pages to a target paper size (points), content scaled to fit; written back in place */
 export interface SetPageSizeRequest {
   path: string
@@ -1024,6 +1045,14 @@ export interface PdfApi {
   openSourcePath(path: string): Promise<void>
   /** Read pdf bytes. Only paths granted to this view are allowed */
   readFile(path: string): Promise<ArrayBuffer>
+  /** one slice of a granted file, with the file's size so the reader loop
+   *  needs no separate stat: a 42 MB one-shot ArrayBuffer over IPC has
+   *  killed renderers before first paint on Windows (genoffice#2366) */
+  readFileChunk(
+    path: string,
+    start: number,
+    end: number,
+  ): Promise<{ data: Uint8Array; fileSize: number }>
   /** Open a password-protected document for editing: plain bytes, the /P the file
       carried, whether a password was needed at all (false: owner-only file) and
       which password opened it (the owner's ignores the /P limits) */
@@ -1052,6 +1081,7 @@ export interface PdfApi {
       and the diff would report phantom changes on identical files */
   compareReadOpen(
     path: string,
+    password?: string,
   ): Promise<
     { ok: true; name: string; pageCount: number; pages: string[] } | { ok: false; reason: string }
   >
@@ -1133,6 +1163,7 @@ export interface PdfApi {
   setPageSize(request: SetPageSizeRequest): Promise<SetPageSizeResult>
   splitPages(request: SplitPagesRequest): Promise<SplitPagesResult>
   cropPages(request: CropPagesRequest): Promise<CropPagesResult>
+  restoreFile(request: RestoreFileRequest): Promise<RestoreFileResult>
   exportImages(request: ExportImagesRequest): Promise<ExportImagesResult>
   /** Convert the current PDF to Word / Excel / PowerPoint via the shell's local conversion flows */
   convertOffice(format: PdfConvertFormat): Promise<void>
@@ -1169,8 +1200,9 @@ export interface PdfApi {
   addSavedSignature(data: SignatureData): Promise<SavedSignature[]>
   /** Delete one saved signature by id; returns the updated list */
   removeSavedSignature(id: string): Promise<SavedSignature[]>
-  /** OS account name, used as the default author of new note comments; '' when unavailable */
+  /** Settings → General user name (the OS account name when unset), used as the default author of new note comments */
   getUsername(): Promise<string>
+  onUsernameChanged(handler: (name: string) => void): () => void
   /** Mirror unsaved-changes state to the main process; drives the save prompt before closing a tab/window */
   setDirty(dirty: boolean): void
   /** Main process asks for a save (close prompt, menu Save, export flows) and waits for sendCloseSaveResult.
@@ -1187,8 +1219,18 @@ export interface PdfApi {
   /** print this window's print stylesheet output on a named printer ('' = OS default)
    *  without the system dialog; ok=false without error = canceled */
   print(job: PrintJobOptions): Promise<{ ok: boolean; error?: string }>
+  /** macOS CUPS route: spool the flushed file itself through lp — the vector
+   *  original reaches the driver untouched (no rasterization pass). pages are
+   *  1-based file pages; undefined = the whole document. ok=false without
+   *  error = canceled (never happens on this route; both sides report). */
+  printFile(
+    job: PrintJobOptions & { path: string; pages?: number[] },
+  ): Promise<{ ok: boolean; error?: string }>
   /** installed printers for the in-app print dialog */
   listPrinters(): Promise<PrinterInfo[]>
+  /** the driver option groups a queue advertises (quality, color, media type),
+   *  for the print dialog's driver-options dropdowns; empty when none */
+  printerOptions(queue: string): Promise<PrinterOption[]>
   /** The file was renamed or moved from the shell (home Folders / Files pane); the viewer follows the new path */
   onFileRenamed(handler: (newPath: string) => void): () => void
   getLanguage(): Promise<Lang>

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -610,6 +611,7 @@ pub struct MediaResult {
 pub struct SheetVisualSource {
     pub sheet_id: String,
     pub worksheet_path: String,
+    pub(crate) ole_objects: Vec<OleObjectRecord>,
 }
 
 #[derive(Clone)]
@@ -832,8 +834,9 @@ pub fn read_visual_objects(
     // worksheet dozens of times during the walk below.
     let chart_paths: Vec<String> = archive
         .file_names()
+        .filter_map(Result::ok)
         .filter(|name| is_chart_part(name))
-        .map(ToOwned::to_owned)
+        .map(Cow::into_owned)
         .collect();
     if !chart_paths.is_empty() {
         let references: Vec<String> = chart_paths
@@ -848,7 +851,7 @@ pub fn read_visual_objects(
     let mut ole_serial = 0usize;
     for sheet in sheets {
         let sheet_relationships = read_relationships(archive, &sheet.worksheet_path)?;
-        let ole_objects = read_ole_objects(archive, &sheet.worksheet_path, &sheet_relationships)?;
+        let ole_objects = sheet.ole_objects.clone();
         let ole_shape_ids: HashSet<u32> = ole_objects.iter().map(|ole| ole.shape_id).collect();
         let slicer_captions =
             read_slicer_captions(archive, &sheet.worksheet_path, &sheet_relationships);
@@ -1031,14 +1034,14 @@ const EMU_PER_PIXEL: i64 = 9525;
 /// drawing supplies the anchor and preview picture.
 pub(crate) fn read_ole_objects(
     archive: &mut ZipArchive<File>,
+    worksheet_without_cells: &str,
     worksheet_path: &str,
-    sheet_relationships: &HashMap<String, Relationship>,
 ) -> Result<Vec<OleObjectRecord>, SidecarError> {
-    let xml = read_worksheet_without_cells(archive, worksheet_path)?;
-    if !xml.contains("oleObject") {
+    if !worksheet_without_cells.contains("oleObject") {
         return Ok(Vec::new());
     }
-    let document = parse_document(&xml, worksheet_path)?;
+    let sheet_relationships = read_relationships(archive, worksheet_path)?;
+    let document = parse_document(worksheet_without_cells, worksheet_path)?;
     let mut records: Vec<OleObjectRecord> = Vec::new();
     for node in document
         .descendants()
@@ -1939,7 +1942,11 @@ pub(crate) fn resolve_part_target(source_path: &str, target: &str) -> Result<Str
 /// cell data, and the cell data is nearly the whole part: reading it into a
 /// String for every sheet on every open kept a copy of a 293 MB sheet resident
 /// in the sidecar (600 MB) for a check that usually finds nothing.
-fn read_worksheet_without_cells(
+///
+/// Open reads this once per sheet and hands it to every reader that only
+/// needs what follows the cells (OLE objects, sparklines). Each of them
+/// streaming the part on its own cost one more pass over every cell.
+pub(crate) fn read_worksheet_without_cells(
     archive: &mut ZipArchive<File>,
     path: &str,
 ) -> Result<String, SidecarError> {

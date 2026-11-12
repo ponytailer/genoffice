@@ -29,6 +29,20 @@ export function decodeNumericCharRefs(text: string): string {
   })
 }
 
+/**
+ * An ST_Percentage as a fraction of one. The schema's own form is an integer
+ * in 1/1000 % ("50000"), and Google Slides writes the suffixed form ("50%").
+ * Reading the suffix as a bare integer turns every such value into a
+ * thousandth of what the file meant, so both forms are accepted here.
+ */
+export function percentFraction(raw: unknown): number | undefined {
+  if (raw == null) return undefined
+  const text = String(raw).trim()
+  const n = Number.parseFloat(text)
+  if (!Number.isFinite(n)) return undefined
+  return text.endsWith('%') ? n / 100 : n / 100000
+}
+
 /** XML 1.0 forbids C0 controls (minus tab/LF/CR), U+FFFE/FFFF and lone
     surrogates even when escaped — one such byte makes the whole part
     unparseable and PowerPoint offers repair. VT/FF (common in PDF-extracted
@@ -49,6 +63,17 @@ export function escapeXmlText(text: string): string {
 
 export function escapeXmlAttr(text: string): string {
   return escapeXmlText(text).replace(/"/g, '&quot;')
+}
+
+/**
+ * An `<a:srgbClr val="…">` value as `#RRGGBB`. ST_HexColorRGB is six hex
+ * digits; anything else is a broken attribute, and handing it to a lenient
+ * hex reader invents a colour ('#UNDEFINED' reads as 00 DE 0F — bright green).
+ * An eight-digit value is accepted and its first six digits are the colour.
+ */
+export function srgbHexValue(raw: unknown): string | undefined {
+  const text = String(raw ?? '').trim()
+  return /^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$/.test(text) ? '#' + text.toUpperCase() : undefined
 }
 
 const RELATIONSHIP_ID = /\bId\s*=\s*(["'])rId(\d+)\1/g

@@ -37,6 +37,7 @@ export type AgentId =
   | 'openclaw'
   | 'copilot'
   | 'opencode'
+  | 'dsh'
 
 export interface AgentTarget {
   id: AgentId
@@ -158,6 +159,15 @@ const AGENTS: readonly AgentDef[] = [
     id: 'opencode',
     label: 'OpenCode',
     probe: (env, home) => join(env.XDG_CONFIG_HOME || join(home, '.config'), 'opencode'),
+    skills: (p) => join(p, 'skills'),
+    skillsTarget: false,
+  },
+  {
+    // DSH_HOME (default ~/.dsh): the row exists so `agentConfigDir('dsh')`
+    // finds the dotfolder and `genoffice mcp` can write its Cordis patch
+    id: 'dsh',
+    label: 'DeepSeek Harness (dsh)',
+    probe: (env, home) => env.DSH_HOME || join(home, '.dsh'),
     skills: (p) => join(p, 'skills'),
     skillsTarget: false,
   },
@@ -394,7 +404,8 @@ export interface LegacySweep {
 
 /**
  * The legacy per-tool copies this app wrote, read from the ledger. A path the
- * ledger does not know was not written by this app and is not ours to touch.
+ * ledger does not know was not written by this app and is not ours to touch;
+ * a ledger row whose file is already gone is dropped.
  */
 export function findLegacySkillCopies(
   ledger: SkillLedger,
@@ -407,6 +418,10 @@ export function findLegacySkillCopies(
     const path = skillFilePath(skillsDir)
     const entry = ledger[path]
     if (!entry) continue
+    if (!existsSync(path)) {
+      delete ledger[path]
+      continue
+    }
     let ours = false
     try {
       ours = sha256(readFileSync(path, 'utf-8')) === entry.sha256
@@ -456,7 +471,8 @@ export function currentSkillInstalled(
 ): boolean {
   const shared = AGENTS.find((a) => a.id === 'agents')
   if (!shared) return false
-  return Boolean(ledger[skillFilePath(shared.skills(shared.probe(env, home), env, home))])
+  const path = skillFilePath(shared.skills(shared.probe(env, home), env, home))
+  return Boolean(ledger[path]) && existsSync(path)
 }
 
 /** `genoffice/SKILL.md` inside a zip: the layout claude.ai and the desktop apps accept for an uploaded skill. */

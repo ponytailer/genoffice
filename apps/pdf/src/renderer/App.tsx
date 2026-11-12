@@ -136,8 +136,15 @@ import {
   remapOutlinePages,
   remapOutlineTree,
 } from './heading-outline'
-import { filterPageParity, printPdf, type PageParity } from './print'
-import type { PdfEncryptionInput, PdfPermissions, PrintDuplex, PrinterInfo } from '../shared/ipc'
+import { filterPageParity, maySpoolOriginal, printPdf, type PageParity } from './print'
+import { readFileBytes } from './file-bytes'
+import type {
+  PdfEncryptionInput,
+  PdfPermissions,
+  PrintDuplex,
+  PrinterInfo,
+  PrinterOption,
+} from '../shared/ipc'
 import { mayChangeProtection } from './protection-gate'
 import { PasswordDialog } from './PasswordDialog'
 import { PropertiesDialog } from './PropertiesDialog'
@@ -237,6 +244,8 @@ import {
 } from './view-config'
 import type { PageSize, FitMode } from './view-config'
 import { useVisibleSet, PdfPage, MarkupOverlay } from './PdfPage'
+import { probePageGeometry } from './page-probe'
+import { loadPdfForView } from './open-document'
 import { PdfThumb, ThumbPendingOverlay } from './PdfThumb'
 import type { ThumbMenu } from './PdfThumb'
 import { SignDropOverlay, signPlaceK, imagePlaceK, staticFormFillPlaceK } from './SignDropOverlay'
@@ -266,6 +275,8 @@ import {
   textEditPreviewParts,
   textEditPreviewContent,
   seedDraftColors,
+  draftOwnedEditIds,
+  previewsTextEdit,
   paperCss,
   textEraseKey,
   textEraseProbe,
@@ -324,7 +335,6 @@ import {
   IconFieldPreview,
   IconFormCheck,
   IconFormCross,
-  IconExportImg,
   IconConvertPdf,
   IconInsertImage,
   IconEditImage,
@@ -398,6 +408,18 @@ const RIBBON_TABS = [
 ] as const
 type RibbonTab = (typeof RIBBON_TABS)[number]['id'] | 'fillForm' | 'formDesign'
 
+/** The file's bytes before and after a change written to it at once */
+interface WrittenStep {
+  before: ArrayBuffer
+  after: ArrayBuffer
+}
+interface WrittenSteps {
+  undo: WrittenStep[]
+  redo: WrittenStep[]
+}
+/** Each step holds the whole file twice: a long history of them would hold that much memory */
+const MAX_WRITTEN_STEPS = 10
+
 export default function App() {
   const { lang, t } = useI18n()
   const collapse = useRibbonCollapse('genoffice-pdf-ribbon-collapsed', {
@@ -413,6 +435,10 @@ export default function App() {
     'loading',
   )
   const [sizes, setSizes] = useState<PageSize[]>([])
+  /** 1-based pages whose probe failed: they render as error tiles instead of canvases */
+  const [failedPages, setFailedPages] = useState<Set<number>>(new Set())
+  /** the message of a failed open, shown with the placeholder's loadError line */
+  const [openError, setOpenError] = useState<string | null>(null)
   // Blank pages added this session live past the document's pages as virtual original
   // indices (see BlankPageInput); allSizes is the page table every index lookup uses
   const [blankPages, setBlankPages] = useState<LocalBlankPage[]>([])
@@ -450,6 +476,7 @@ export default function App() {
   const [compareName, setCompareName] = useState<string | null>(null)
   const [compareBusy, setCompareBusy] = useState(false)
   const [compareSwapped, setCompareSwapped] = useState(false)
+  const compareSidesRef = useRef<{ mine: PageText[]; theirs: PageText[] } | null>(null)
   const [sidebarW, setSidebarW] = useState(loadSidebarW)
   /** raster width for thumbnails — only updated when a drag ends (re-rastering every frame would jank) */
   const [thumbRasterW, setThumbRasterW] = useState(() => loadSidebarW() - SIDEBAR_CHROME)
@@ -540,10 +567,11 @@ export default function App() {
   const [savedNotes, setSavedNotes] = useState<Map<number, SavedNoteAnnot[]>>(new Map())
   /** Active comment thread: its margin card is expanded and linked to its pin */
   const [activeNote, setActiveNote] = useState<{ origIdx: number; rootKey: string } | null>(null)
-  /** OS account name; the default author of new note comments */
+  /** Settings → General user name; the default author of new note comments */
   const [noteAuthor, setNoteAuthor] = useState('')
   useEffect(() => {
     window.pdfApi.getUsername().then(setNoteAuthor, () => {})
+    return window.pdfApi.onUsernameChanged(setNoteAuthor)
   }, [])
   const [highlightColor, setHighlightColor] = useState<[number, number, number]>(
     MARKUP_COLORS.highlight,
@@ -924,7 +952,7 @@ export default function App() {
   const [pendingSign, setPendingSign] = useState<SignatureData | null>(null)
   /** A /Sig widget selected from the form layer; confirmed signatures fit this rect directly. */
   const [signatureTarget, setSignatureTarget] = useState<FormWidget | null>(null)
-  const [exporting, setExporting] = useState(false)
+  const [exporting, setExporting] = useState<'png' | 'jpg' | null>(null)
   const [formCatalog, setFormCatalog] = useState<FormCatalog | null>(null)
   const [formHasXfa, setFormHasXfa] = useState(false)
   const [documentEncrypted, setDocumentEncrypted] = useState(false)
@@ -1073,6 +1101,16 @@ export default function App() {
   const [printing, setPrinting] = useState(false)
   const [undoStack, setUndoStack] = useState<EditSnapshot[]>([])
   const [redoStack, setRedoStack] = useState<EditSnapshot[]>([])
+  /** The file around each change written to it at once (Replace pages, Page size, Crop, Insert
+      PDF): Undo with no pending edit left writes it back as it was, Redo as the change left it */
+  const writtenRef = useRef<WrittenSteps>({ undo: [], redo: [] })
+  /** Their counts, for the Undo and Redo buttons */
+  const [written, setWrittenCounts] = useState({ undo: 0, redo: 0 })
+  const setWritten = (steps: WrittenSteps) => {
+    writtenRef.current = steps
+    setWrittenCounts({ undo: steps.undo.length, redo: steps.redo.length })
+  }
+  const writtenStepBusyRef = useRef(false)
   const [pwInput, setPwInput] = useState('')
   const [pwWrong, setPwWrong] = useState(false)
   const [extractDlg, setExtractDlg] = useState(false)
@@ -1101,6 +1139,14 @@ export default function App() {
   const [printCopies, setPrintCopies] = useState(1)
   const [printCollate, setPrintCollate] = useState(true)
   const [printDuplex, setPrintDuplex] = useState<PrintDuplex>('simplex')
+  // the chosen printer's driver option groups (quality, color, media type) and
+  // what the user picked from them; empty for the system dialog and on
+  // platforms where the CUPS route does not run
+  const [driverOptions, setDriverOptions] = useState<PrinterOption[]>([])
+  // bumped on every printer switch: a slow printerOptions() answer from an
+  // earlier queue must not overwrite the current queue's groups
+  const driverOptionsRequest = useRef(0)
+  const [driverChoices, setDriverChoices] = useState<Record<string, string>>({})
   /** Page-crop dialog: rendered page bitmap + which page it shows */
   const [pageCropDlg, setPageCropDlg] = useState<{ png: string; origIdx: number } | null>(null)
   const [cropAllPages, setCropAllPages] = useState(false)
@@ -1270,8 +1316,7 @@ export default function App() {
       saved?: SavedSnapshot,
       waitForPageNos: number[] = [],
     ) => {
-      const data = await window.pdfApi.readFile(path)
-      const bytes = new Uint8Array(data)
+      const bytes = await readFileBytes(window.pdfApi, path)
       setFormHasXfa(hasXfaMarker(bytes))
       if (!saved) {
         setFormCatalog(null)
@@ -1289,11 +1334,7 @@ export default function App() {
         setSelectedFormFieldId(null)
         setFreshFormFieldId(null)
       }
-      const task = getDocument({
-        data: bytes,
-        password: passwordRef.current,
-        ...DOC_OPTS,
-      })
+      const task = loadPdfForView(bytes, passwordRef.current)
       let loaded: PDFDocumentProxy
       try {
         loaded = await task.promise
@@ -1355,15 +1396,29 @@ export default function App() {
           diskPasswordRef.current = null
         }
         setProtectionDirty(false)
-        for (let i = 1; i <= loaded.numPages; i++) {
-          const page = await loaded.getPage(i)
-          // Unrotated size; display size is derived by geom from the total rotation
-          const vp = page.getViewport({ scale: 1, rotation: 0 })
-          all.push({ width: vp.width, height: vp.height })
-          rots.push(page.rotate ?? 0)
-          origins.push([page.view[0]!, page.view[1]!])
-          userUnits.push(page.userUnit ?? 1)
+        const probe = await probePageGeometry(loaded)
+        for (const geo of probe.pages) {
+          all.push({ width: geo.width, height: geo.height })
+          rots.push(geo.rotate)
+          origins.push(geo.origin)
+          userUnits.push(geo.userUnit)
         }
+        // A page that cannot be probed no longer destroys the document: the
+        // tile renders as an error placeholder and the rest of the book opens
+        // (genoffice#2366 — one broken page deep in a large file used to blank
+        // the whole viewer with the reason only in the console)
+        if (probe.failures.length > 0) {
+          setFailedPages(new Set(probe.failures.map((f) => f.page)))
+          showNotice(
+            t('pdfPagesFailed', {
+              count: probe.failures.length,
+              detail: probe.failures
+                .slice(0, 3)
+                .map((f) => `#${f.page} ${f.message}`)
+                .join(', '),
+            }),
+          )
+        } else setFailedPages(new Set())
       } catch (err) {
         // getMetadata/page probing failed after the document resolved but before
         // setDoc adopted it: destroy the half-open document (pdfjs-dist 6.x
@@ -1638,11 +1693,12 @@ export default function App() {
           return mapped.every((n, i) => n === i) ? null : mapped
         })
       }
-      setFileSize(data.byteLength)
+      setFileSize(bytes.byteLength)
       setSelected(null)
       setDeleteToast(false)
       setUndoStack([])
       setRedoStack([])
+      setWritten({ undo: [], redo: [] })
       outlineDocRef.current = loaded
       // A save-reload keeps the current tree (page indices already remapped
       // above) visible while headings rescan
@@ -1677,6 +1733,7 @@ export default function App() {
     async (path: string) => {
       try {
         setFilePath(path)
+        setOpenError(null)
         // A newly opened file starts outside the autosave gate
         savedOnceRef.current = false
         await loadDoc(path, null)
@@ -1697,7 +1754,7 @@ export default function App() {
           // reports it like a password failure, and the answer has to name the
           // real reason instead of looping the prompt
           try {
-            const raw = new Uint8Array(await window.pdfApi.readFile(path))
+            const raw = await readFileBytes(window.pdfApi, path)
             const probe = await window.pdfApi.decryptPdf(raw, '')
             if (!probe.ok && probe.reason === 'certificate-encryption') {
               showNotice(t('pwCertEncrypted'))
@@ -1714,6 +1771,7 @@ export default function App() {
           return
         }
         console.error('[pdf] open failed:', err)
+        setOpenError(err instanceof Error ? err.message : String(err))
         setStatus('error')
       }
     },
@@ -2248,6 +2306,7 @@ export default function App() {
     const snap = snapshot()
     setUndoStack((prev) => [...prev.slice(-49), snap])
     setRedoStack([])
+    if (writtenRef.current.redo.length > 0) setWritten({ ...writtenRef.current, redo: [] })
   }
 
   const newId = () => `d${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`
@@ -2432,7 +2491,7 @@ export default function App() {
 
   const undo = () => {
     const top = undoStack[undoStack.length - 1]
-    if (!top) return
+    if (!top) return void stepWritten('undo')
     // Taken before applySnapshot rewrites the refs; the updater may run after it
     const cur = snapshot()
     setRedoStack((r) => [...r, cur])
@@ -2443,7 +2502,7 @@ export default function App() {
 
   const redo = () => {
     const top = redoStack[redoStack.length - 1]
-    if (!top) return
+    if (!top) return void stepWritten('redo')
     const cur = snapshot()
     setUndoStack((u) => [...u, cur])
     setRedoStack((r) => r.slice(0, -1))
@@ -4407,8 +4466,10 @@ export default function App() {
     if (!doc || compareBusy) return
     // Both sides must come from the same extraction engine — pdf.js and pdfium
     // break lines differently, and a cross-engine diff reports phantom changes
-    // on identical files. The open document therefore needs a file on disk.
-    if (!filePath) {
+    // on identical files. The open document therefore needs its current state
+    // on disk: no file yet, or pending edits, both mean "save first". Redaction
+    // marks stay out — a save does not apply them, so they could never unblock.
+    if (!filePath || ordinaryDirty) {
       showNotice(t('compareNeedsSaved'))
       return
     }
@@ -4419,22 +4480,25 @@ export default function App() {
         if (!('canceled' in picked)) showNotice(picked.reason)
         return
       }
-      const mine = await window.pdfApi.compareReadOpen(filePath)
+      const mine = await window.pdfApi.compareReadOpen(filePath, passwordRef.current)
       if (!mine.ok) {
         showNotice(mine.reason)
         return
       }
       const mineSide: PageText[] = mine.pages.map((text, pageIndex) => ({ pageIndex, text }))
       const theirs: PageText[] = picked.pages.map((text, pageIndex) => ({ pageIndex, text }))
-      const [oldSide, newSide] = compareSwapped ? [theirs, mineSide] : [mineSide, theirs]
+      compareSidesRef.current = { mine: mineSide, theirs }
       setCompareName(picked.name)
-      setCompareResult(compareDocuments(oldSide, newSide))
+      setCompareResult(compareSides(mineSide, theirs, compareSwapped))
     } catch (err) {
       showNotice(err instanceof Error ? err.message : String(err))
     } finally {
       setCompareBusy(false)
     }
   }
+
+  const compareSides = (mine: PageText[], theirs: PageText[], swapped: boolean): CompareResult =>
+    swapped ? compareDocuments(theirs, mine) : compareDocuments(mine, theirs)
 
   const attachmentRows = (): AttachmentRow[] => {
     const rows: AttachmentRow[] = []
@@ -4554,6 +4618,7 @@ export default function App() {
     fields: LocalFormField[] = savableFormFields,
   ) => ({
     markups: markups.map(({ id: _id, ...rest }) => rest),
+    ...(noteAuthor ? { annotationAuthor: noteAuthor } : {}),
     annotDeletes: annotDeletes.map((d): AnnotDeleteInput => ({
       pageIndex: d.annot.pageIndex,
       objNum: d.annot.objNum,
@@ -5281,7 +5346,14 @@ export default function App() {
     const inserts = buildBatesInserts(
       visList.map((origIdx) => {
         const geom = pageGeom(origIdx)
-        return { width: geom.pw, height: geom.ph, rotate: geom.rot, x0: geom.x0, y0: geom.y0 }
+        return {
+          width: geom.pw,
+          height: geom.ph,
+          rotate: geom.rot,
+          x0: geom.x0,
+          y0: geom.y0,
+          userUnit: geom.userUnit,
+        }
       }),
       config,
       (text, size) => measureTextWidth(text, fontOf(size)),
@@ -6005,7 +6077,7 @@ export default function App() {
   /** Pending edits the open draft stands in for (reopened / folded): the draft's probe
       erases their run, so they take the draft's erased state */
   const draftOwnedIds = useMemo(
-    () => new Set(textDraft ? [textDraft.editId, ...(textDraft.foldedIds ?? [])] : []),
+    () => draftOwnedEditIds(textDraft),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- same: identity fields only
     [textDraft?.editId, textDraft?.foldedIds],
   )
@@ -6162,7 +6234,7 @@ export default function App() {
   const exportImages = (allPages: boolean, format: 'png' | 'jpg' = 'png') =>
     flushThen(async () => {
       if (!doc || exporting) return
-      setExporting(true)
+      setExporting(format)
       try {
         const targets = allPages ? visList : [curOrigIdx].filter((i) => i >= 0)
         const images: string[] = []
@@ -6209,7 +6281,7 @@ export default function App() {
       } catch (err) {
         opFailed(err instanceof Error ? err.message : String(err))
       } finally {
-        setExporting(false)
+        setExporting(null)
       }
     })
 
@@ -6434,12 +6506,56 @@ export default function App() {
     else if ('canceled' in result) return { ok: true, canceled: true, flushed }
     return result as Exclude<R, { canceled: true }>
   }
+  /** Reloads the file a change just wrote, and keeps the file from *before* it as an Undo step */
+  const reloadWritten = async (before: ArrayBuffer): Promise<number> => {
+    const kept = writtenRef.current.undo
+    const pageCount = await loadDoc(filePath, doc)
+    const after = await window.pdfApi.readFile(filePath)
+    setWritten({ undo: [...kept.slice(-(MAX_WRITTEN_STEPS - 1)), { before, after }], redo: [] })
+    return pageCount
+  }
+
+  /** Undo or Redo of a change written at once, once no pending edit is left; false when there is none */
+  const stepWritten = (direction: 'undo' | 'redo'): boolean => {
+    const { undo: undoable, redo: redoable } = writtenRef.current
+    const steps = direction === 'undo' ? undoable : redoable
+    const step = steps[steps.length - 1]
+    if (!step || dirty || writtenStepBusyRef.current) return false
+    writtenStepBusyRef.current = true
+    void (async () => {
+      try {
+        const bytes = direction === 'undo' ? step.before : step.after
+        const result = await window.pdfApi.restoreFile({ path: filePath, bytes })
+        if (!result.ok) {
+          opFailed(result.error)
+          return
+        }
+        await loadDoc(filePath, doc)
+        setWritten(
+          direction === 'undo'
+            ? { undo: undoable.slice(0, -1), redo: [...redoable, step] }
+            : { undo: [...undoable, step], redo: redoable.slice(0, -1) },
+        )
+      } finally {
+        writtenStepBusyRef.current = false
+      }
+    })()
+    return true
+  }
+
   const rewriteInPlace = async (
     run: () => Promise<{ ok: true } | { ok: true; canceled: true } | { ok: false; error: string }>,
   ): Promise<FileOpResult> => {
-    const result = await runFileOp(run)
+    const held: { before?: ArrayBuffer } = {}
+    const result = await runFileOp(async () => {
+      held.before = await window.pdfApi.readFile(filePath)
+      return run()
+    })
     if (!result.ok || 'canceled' in result) return result
-    return { ok: true, pageCount: await loadDoc(filePath, doc) }
+    return {
+      ok: true,
+      pageCount: held.before ? await reloadWritten(held.before) : await loadDoc(filePath, doc),
+    }
   }
   const baseName = () => fileName.replace(/\.pdf$/i, '')
 
@@ -6522,12 +6638,13 @@ export default function App() {
     // the flush bakes the visible order into the file, so the anchor becomes its visible position
     const afterPageIndex = visListOf(orderRef.current).indexOf(afterOrigIdx)
     return flushThen(async () => {
+      const before = await window.pdfApi.readFile(filePath)
       const result = await window.pdfApi.insertPdf({ path: filePath, afterPageIndex })
       if (!result.ok) {
         opFailed(result.error)
         return
       }
-      if (!('canceled' in result)) await loadDoc(filePath, doc)
+      if (!('canceled' in result)) await reloadWritten(before)
     })
   }
 
@@ -6695,13 +6812,29 @@ export default function App() {
             copies: printCopies,
             collate: printCollate,
             duplex: printDuplex,
+            driverOptions: driverOptions
+              .filter(
+                (g) =>
+                  driverChoices[g.name] !== undefined && driverChoices[g.name] !== g.defaultValue,
+              )
+              .map((g) => ({ name: g.name, value: driverChoices[g.name]! })),
           }
     try {
       await flushThen(async () => {
         setPrinting(true)
         try {
-          const data = await window.pdfApi.readFile(filePath)
-          const pdoc = await getDocument({ data: new Uint8Array(data), ...DOC_OPTS }).promise
+          if (job && IS_MAC && maySpoolOriginal(diskPasswordRef.current)) {
+            // macOS named printer: lp spools the flushed file itself — the
+            // vector original reaches the driver untouched, instead of a
+            // 150-200 DPI raster pass (genoffice#2347's route, quality half).
+            // An encrypted file stays encrypted on disk, which CUPS' pdftopdf
+            // cannot open, so those fall through to the raster path below.
+            const r = await window.pdfApi.printFile({ ...job, pages, path: filePath })
+            if (!r.ok && r.error) opFailed(r.error)
+            return
+          }
+          const data = await readFileBytes(window.pdfApi, filePath)
+          const pdoc = await getDocument({ data, ...DOC_OPTS }).promise
           try {
             await printPdf(pdoc, pages, job)
           } finally {
@@ -7618,7 +7751,13 @@ export default function App() {
     return (
       <div className="app">
         <div className="pdf-placeholder">
-          {status === 'loading' ? t('loading') : status === 'error' ? t('loadError') : t('noFile')}
+          {status === 'loading'
+            ? t('loading')
+            : status === 'error'
+              ? openError
+                ? `${t('loadError')}: ${openError}`
+                : t('loadError')
+              : t('noFile')}
         </div>
       </div>
     )
@@ -8066,7 +8205,7 @@ export default function App() {
             className="qa-btn"
             data-tip={`${t('undo')} (${platformShortcuts('⌘Z')})`}
             aria-label={`${t('undo')} (${platformShortcuts('⌘Z')})`}
-            disabled={undoStack.length === 0}
+            disabled={undoStack.length === 0 && written.undo === 0}
             onClick={undo}
           >
             <IconUndo />
@@ -8075,7 +8214,7 @@ export default function App() {
             className="qa-btn"
             data-tip={`${t('redo')} (${platformShortcuts('⇧⌘Z')})`}
             aria-label={`${t('redo')} (${platformShortcuts('⇧⌘Z')})`}
-            disabled={redoStack.length === 0}
+            disabled={redoStack.length === 0 && written.redo === 0}
             onClick={redo}
           >
             <IconRedo />
@@ -8206,14 +8345,14 @@ export default function App() {
                     <button
                       className={`rb-big${convertOpen ? ' active' : ''}`}
                       data-tip={t('convertPdfTip')}
-                      disabled={convertBusy}
+                      disabled={convertBusy || exporting !== null}
                       onClick={() => setConvertOpen((v) => !v)}
                     >
                       <span className="rb-big-icon">
                         <IconConvertPdf />
                         <RbCaret />
                       </span>
-                      <span>{t('convertPdf')}</span>
+                      <span>{exporting ? t('exporting') : t('convertPdf')}</span>
                     </button>
                     {convertOpen && (
                       <div className="rb-drop rb-menu">
@@ -8226,6 +8365,25 @@ export default function App() {
                           {t('convertToMarkdown')}
                         </button>
                         <button onClick={() => void convertTo('html')}>{t('convertToHtml')}</button>
+                        <div className="rb-menu-sep" />
+                        <button
+                          title={t('exportImagesAll')}
+                          onClick={() => {
+                            setConvertOpen(false)
+                            void exportImages(true)
+                          }}
+                        >
+                          {t('exportImages')}
+                        </button>
+                        <button
+                          title={t('exportImagesAllJpg')}
+                          onClick={() => {
+                            setConvertOpen(false)
+                            void exportImages(true, 'jpg')
+                          }}
+                        >
+                          {t('exportImagesJpg')}
+                        </button>
                       </div>
                     )}
                   </div>
@@ -8247,28 +8405,6 @@ export default function App() {
                       <IconPrint />
                     </span>
                     <span>{printing ? t('printPreparing') : t('print')}</span>
-                  </button>
-                  <button
-                    className="rb-big"
-                    data-tip={t('exportImagesAll')}
-                    disabled={exporting}
-                    onClick={() => void exportImages(true)}
-                  >
-                    <span className="rb-big-icon">
-                      <IconExportImg />
-                    </span>
-                    <span>{exporting ? t('exporting') : t('exportImages')}</span>
-                  </button>
-                  <button
-                    className="rb-big"
-                    data-tip={t('exportImagesAllJpg')}
-                    disabled={exporting}
-                    onClick={() => void exportImages(true, 'jpg')}
-                  >
-                    <span className="rb-big-icon">
-                      <IconExportImg />
-                    </span>
-                    <span>{exporting ? t('exporting') : t('exportImagesJpg')}</span>
                   </button>
                   <button
                     className="rb-big"
@@ -8923,7 +9059,7 @@ export default function App() {
                   </button>
                   <button
                     className="rb-big"
-                    disabled={readOnly || sizes.length === 0}
+                    disabled={readOnly || pageCount === 0}
                     data-tip={t('batesHint')}
                     onClick={() => setBatesDlg(true)}
                   >
@@ -9209,8 +9345,10 @@ export default function App() {
                   busy={compareBusy}
                   onPick={() => void runCompare()}
                   onSwap={() => {
-                    setCompareSwapped((v) => !v)
-                    setCompareResult(null)
+                    const swapped = !compareSwapped
+                    setCompareSwapped(swapped)
+                    const sides = compareSidesRef.current
+                    setCompareResult(sides ? compareSides(sides.mine, sides.theirs, swapped) : null)
                   }}
                   onGoToPage={(pageNo) => scrollToPage(pageNo)}
                 />
@@ -9523,16 +9661,22 @@ export default function App() {
                             }
                           }}
                         >
-                          {!isBlankPage(origIdx) && (
-                            <PdfPage
-                              doc={doc}
-                              pageNo={origIdx + 1}
-                              scale={scale}
-                              rotationDelta={rotDelta(origIdx)}
-                              visible={rowVisible}
-                              onRenderState={pageRenderState}
-                            />
-                          )}
+                          {!isBlankPage(origIdx) &&
+                            (failedPages.has(origIdx + 1) ? (
+                              <div className="pdf-page-broken">
+                                <span>{t('loadError')}</span>
+                                <span>#{origIdx + 1}</span>
+                              </div>
+                            ) : (
+                              <PdfPage
+                                doc={doc}
+                                pageNo={origIdx + 1}
+                                scale={scale}
+                                rotationDelta={rotDelta(origIdx)}
+                                visible={rowVisible}
+                                onRenderState={pageRenderState}
+                              />
+                            ))}
                           {livePreview.has(origIdx) &&
                             (() => {
                               const lp = livePreview.get(origIdx)!
@@ -9828,7 +9972,7 @@ export default function App() {
                                 })}
                               {/* Pending text edits: cover the original run and preview the replacement */}
                               {textEdits
-                                .filter((te) => te.input.pageIndex === origIdx)
+                                .filter((te) => previewsTextEdit(te, origIdx, draftOwnedIds))
                                 .map((te) => {
                                   const { style, coverStyle } = textEditPreviewParts(
                                     te,
@@ -11259,7 +11403,7 @@ export default function App() {
             {batesDlg && (
               <BatesDialog
                 t={t}
-                pageCount={sizes.length}
+                pageCount={pageCount}
                 onApply={applyBates}
                 onClose={() => setBatesDlg(false)}
               />
@@ -11497,7 +11641,22 @@ export default function App() {
                     <select
                       className="pdf-modal-input"
                       value={printDevice}
-                      onChange={(e) => setPrintDevice(e.target.value)}
+                      onChange={(e) => {
+                        const request = ++driverOptionsRequest.current
+                        setPrintDevice(e.target.value)
+                        setDriverChoices({})
+                        setDriverOptions([])
+                        if (e.target.value && IS_MAC)
+                          void window.pdfApi
+                            .printerOptions(e.target.value)
+                            .then((options) => {
+                              if (request === driverOptionsRequest.current)
+                                setDriverOptions(options)
+                            })
+                            .catch(() => {
+                              if (request === driverOptionsRequest.current) setDriverOptions([])
+                            })
+                      }}
                     >
                       <option value="">{t('printDefaultPrinter')}</option>
                       {printers.map((p) => (
@@ -11556,6 +11715,24 @@ export default function App() {
                       ))}
                     </select>
                   </label>
+                  {driverOptions.map((group) => (
+                    <label key={group.name} className="pdf-modal-row pdf-print-field">
+                      <span>{group.translation}</span>
+                      <select
+                        className="pdf-modal-input"
+                        value={driverChoices[group.name] ?? group.defaultValue ?? group.values[0]}
+                        onChange={(e) =>
+                          setDriverChoices((c) => ({ ...c, [group.name]: e.target.value }))
+                        }
+                      >
+                        {group.values.map((v) => (
+                          <option key={v} value={v}>
+                            {v}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ))}
                   <div className="pdf-print-divider" />
                   <label className="pdf-modal-row">
                     <input

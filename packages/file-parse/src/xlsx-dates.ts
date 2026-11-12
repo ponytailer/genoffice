@@ -145,7 +145,7 @@ export function formatSerial(
   }
   if (serial < 0) return null
   let days = Math.floor(serial)
-  let secs = Math.round((serial - days) * 86400)
+  let secs = parts.time ? Math.round((serial - days) * 86400) : 0
   if (secs >= 86400) {
     days += 1
     secs = 0
@@ -159,10 +159,14 @@ export function formatSerial(
     dateText = '1900-02-29'
   } else {
     if (!date1904 && days === 0) return null
+    // 9999-12-31 is the last day the calendar represents; beyond it the Date
+    // leaves its range and the cell would render as "0NaN-NaN-NaN".
+    if (days > 2958465) return null
     // 1900 system: 1899-12-30 as epoch makes serials ≥ 61 land right; below 60 shift back one day
     const epoch = date1904 ? Date.UTC(1904, 0, 1) : Date.UTC(1899, 11, 30)
     const shift = !date1904 && days < 60 ? 1 : 0
     const d = new Date(epoch + (days + shift) * 86400000)
+    if (Number.isNaN(d.getTime())) return null
     dateText = `${pad(d.getUTCFullYear(), 4)}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`
   }
   return timeText ? `${dateText} ${timeText}` : dateText

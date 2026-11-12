@@ -67,6 +67,10 @@ const ENDPOINTS: Record<Exclude<DecisionEndpoint, 'custom' | 'platform'>, Endpoi
   liquid: { url: 'https://api.liquid.ai/decisions/v1/systemone', model: 'd1' },
   'liquid-ultra': { url: 'https://api.liquid.ai/decisions/v1/systemone', model: 'd1-ultra' },
   openai: { url: 'https://api.openai.com/v1/decisions', model: 'gpt-6-luna' },
+  gemini: {
+    url: 'https://generativelanguage.googleapis.com/v1beta/decisions',
+    model: 'gemini-decision-1',
+  },
   cloudflare: { url: '', model: '@cf/cloudflare/clef' },
   'cloudflare-flash': { url: '', model: '@cf/cloudflare/clef-flash' },
   kev: { url: KEV_URL, model: 'kev-latest', local: true },
@@ -121,6 +125,7 @@ function assertCustomUrl(base: string): string {
   } catch {
     throw new Error('bad-url')
   }
+  if (u.username || u.password) throw new Error('embedded-credentials')
   if (u.protocol === 'https:') return base
   if (u.protocol === 'http:' && LOOPBACK_HOST.test(u.host)) return base
   throw new Error('insecure-url')
@@ -174,11 +179,15 @@ export interface DecisionHttpResponse {
   body: string
 }
 
+/** how the transport carries the credential: bearer by default, Google's header on its route */
+export type DecisionAuth = 'bearer' | 'google-api-key'
+
 export type DecisionTransport = (
   url: string,
   body: string,
   key: string,
   signal: AbortSignal,
+  auth?: DecisionAuth,
 ) => Promise<DecisionHttpResponse>
 
 const clip = (s: string, n: number) => Array.from(s).slice(0, n).join('')
@@ -262,6 +271,21 @@ export function prepare(
         })),
       })
     }
+    if (opts.endpoint === 'gemini') {
+      // Google's sibling: shared `input` like OpenAI, but the questions come
+      // back to a keyed map and carry the System One criteria array — no
+      // `state`, no per-question `name`, no `levels`
+      return JSON.stringify({
+        model: bodyModel(opts),
+        input: openaiInput(clip(query, MAX_QUERY_CHARS), documents),
+        questions: Object.fromEntries(
+          documents.map((_, i) => [
+            `d${i}`,
+            { type: 'score', instructions: openaiInstructions(i), criteria: CRITERIA },
+          ]),
+        ),
+      })
+    }
     const state = { query: clip(query, MAX_QUERY_CHARS), documents }
     const questions = Object.fromEntries(
       documents.map((_, i) => [
@@ -325,6 +349,10 @@ function readUsage(r: Record<string, unknown>): {
   let cost: number | null = null
   if (r.usage !== undefined) {
     const usage = obj(r.usage)
+    if (usage.total_input_tokens !== undefined) {
+      inputTokens = num(usage.total_input_tokens, 0, Number.MAX_SAFE_INTEGER)
+      if (!Number.isInteger(inputTokens)) throw new Error('invalid-response')
+    }
     if (usage.input_tokens !== undefined) {
       inputTokens = num(usage.input_tokens, 0, Number.MAX_SAFE_INTEGER)
       if (!Number.isInteger(inputTokens)) throw new Error('invalid-response')
@@ -440,10 +468,13 @@ export function validate(
   return { scores, ...readUsage(r) }
 }
 
-export const fetchTransport: DecisionTransport = async (url, body, key, signal) => {
+export const fetchTransport: DecisionTransport = async (url, body, key, signal, auth = 'bearer') => {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' }
   // local and unauthenticated servers reject or ignore the header; empty key = none
-  if (key.trim()) headers.Authorization = `Bearer ${key.trim()}`
+  if (key.trim()) {
+    if (auth === 'google-api-key') headers['x-goog-api-key'] = key.trim()
+    else headers.Authorization = `Bearer ${key.trim()}`
+  }
   const res = await fetch(url, {
     method: 'POST',
     headers,
@@ -488,7 +519,13 @@ export async function evaluate(
   const timer = setTimeout(() => controller.abort(), budget)
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
-      const r = await send(url, body, opts.key, controller.signal)
+      const r = await send(
+        url,
+        body,
+        opts.key,
+        controller.signal,
+        opts.endpoint === 'gemini' ? 'google-api-key' : 'bearer',
+      )
       if ((r.status === 429 || r.status === 529) && attempt === 0) {
         const seconds = Number(r.retryAfter)
         const wait = r.retryAfter

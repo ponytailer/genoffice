@@ -351,6 +351,14 @@ const homeApi: HomeApi = {
     if (typeof on !== 'boolean') throw new Error('Invalid update check setting.')
     await ipcRenderer.invoke(HOME_CHANNELS.setAutoUpdateCheck, on)
   },
+  async getSilentInstallUpdate() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getSilentInstallUpdate)
+    return result === true
+  },
+  async setSilentInstallUpdate(on) {
+    if (typeof on !== 'boolean') throw new Error('Invalid silent install setting.')
+    await ipcRenderer.invoke(HOME_CHANNELS.setSilentInstallUpdate, on)
+  },
   async accountStatus() {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.accountStatus)
     return (result ?? { loggedIn: false }) as AccountStatus
@@ -442,6 +450,15 @@ const homeApi: HomeApi = {
       updatedAt: typeof r?.updatedAt === 'number' ? r.updatedAt : 0,
     }
   },
+  async getCsvImportLimit() {
+    const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getCsvImportLimit)
+    return typeof result === 'number' ? result : 0
+  },
+  async setCsvImportLimit(mb) {
+    if (typeof mb !== 'number' || !Number.isInteger(mb))
+      throw new Error('Invalid CSV import limit.')
+    await ipcRenderer.invoke(HOME_CHANNELS.setCsvImportLimit, mb)
+  },
   async getTabSleepEnabled() {
     const result: unknown = await ipcRenderer.invoke(HOME_CHANNELS.getTabSleepEnabled)
     return result !== false
@@ -526,6 +543,12 @@ const homeApi: HomeApi = {
   },
   async openMcpLogFile() {
     await ipcRenderer.invoke(HOME_CHANNELS.openMcpLogFile)
+  },
+  async getLegacyImportPrompt() {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.getLegacyImportPrompt)) !== false
+  },
+  async setLegacyImportPrompt(prompt) {
+    return (await ipcRenderer.invoke(HOME_CHANNELS.setLegacyImportPrompt, prompt)) !== false
   },
   async getAuthorName() {
     return normalizeAuthorNameSetting(await ipcRenderer.invoke(HOME_CHANNELS.getAuthorName))

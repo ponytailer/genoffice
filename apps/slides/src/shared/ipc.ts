@@ -13,6 +13,11 @@ import type { CustGeomPathCmd, SlideComment, SectionInfo } from '@genoffice/pptx
 import type { FontSizeStep } from '@genoffice/pptx-ops/font-size'
 // the font catalog's shape is the store's to declare, not a copy kept in step by hand
 import type { CatalogEntry as FontCatalogEntry } from '@genoffice/electron-utils/font-store'
+import type { PrintDuplex, PrintJobOptions, PrinterInfo } from '@genoffice/electron-utils/print-job'
+import type { PrinterOption } from '@genoffice/electron-utils/printer-options'
+
+export type { PrintDuplex, PrintJobOptions, PrinterInfo }
+export type { PrinterOption }
 import type { LayoutSkeleton } from '../renderer/ai/layout-skeleton'
 import type {
   AiSettings,
@@ -1283,13 +1288,18 @@ export interface PrintSlidesOp {
   widthPx: number
   heightPx: number
   /** Layout: full slides / handouts (N per page) / notes pages (slide + notes text) */
-  layout?: 'full' | 'handout2' | 'handout3' | 'handout6' | 'notes'
+  layout?: 'full' | 'handout2' | 'handout3' | 'handout4' | 'handout6' | 'handout9' | 'notes'
   /** Per-page notes text for the notes layout (same order as pngsBase64) */
   notes?: string[]
   /** Paper orientation for handout/notes pages (full pages always follow the slide ratio) */
   orientation?: 'portrait' | 'landscape'
+  /** Thumbnail order across the handout grid (row-first vs column-first) */
+  order?: 'horizontal' | 'vertical'
   /** Border around full-page slides */
   frame?: boolean
+  /** A printer the dialog picked: present = print silently with these job
+   *  options (macOS routes through lp); absent = the system print dialog. */
+  job?: PrintJobOptions
 }
 
 /** Show sync state from presenter view -> audience window (absolute state mirror; audience seek is idempotent) */
@@ -1735,8 +1745,12 @@ export interface SlidesApi {
   savePicture: (op: SavePictureOp) => Promise<SavePictureResult>
   /** Main process printToPDF via a hidden window, written to disk */
   exportPdf: (op: ExportPdfOp) => Promise<ExportPdfResult>
-  /** Print (system dialog; cancel counts as ok=false without an error) */
+  /** Print: with job = silent (macOS named printers spool through lp); without = system dialog */
   printSlides: (op: PrintSlidesOp) => Promise<{ ok: boolean; error?: string }>
+  /** installed printers for the in-app print dialog */
+  listPrinters: () => Promise<PrinterInfo[]>
+  /** the driver option groups a queue advertises (quality, color, media type); empty when none */
+  printerOptions: (queue: string) => Promise<PrinterOption[]>
   save: () => Promise<{ ok: boolean; path?: string; error?: string; slides?: RenderSlide[] }>
   saveAs: (
     defaultName: string,

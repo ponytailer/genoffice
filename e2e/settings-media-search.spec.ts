@@ -64,6 +64,7 @@ test('search reranking lives in the AI Media & Search pane, saves with it, and r
           liquid: '',
           'liquid-ultra': '',
           openai: '',
+          gemini: '',
           cloudflare: '',
           'cloudflare-flash': '',
           kev: '',

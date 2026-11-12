@@ -357,6 +357,120 @@ export async function refreshPlatformProfile(): Promise<PlatformSession | null> 
   }
 }
 
+// ── silent session renewal ───────────────────────────────────────────
+
+/** How long the hidden renewal window may wait for the SPA to re-mint a token. */
+const SILENT_REFRESH_TIMEOUT_MS = 20_000
+
+let silentRefresh: Promise<PlatformSession | null> | null = null
+
+function electronBrowserWindow():
+  | ((options: Electron.BrowserWindowConstructorOptions) => BrowserWindow)
+  | undefined {
+  try {
+    const require = createRequire(import.meta.url)
+    const { BrowserWindow: Ctor } = require('electron') as {
+      BrowserWindow: new (options: Electron.BrowserWindowConstructorOptions) => BrowserWindow
+    }
+    return (options) => new Ctor(options)
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Renew an expired platform session without showing anything.
+ *
+ * The platform SPA keeps its own long-lived session in the same persistent
+ * partition the login window uses, so loading it in a hidden window lets the
+ * SPA re-mint `ultrarag_auth` on its own; the localStorage poll below picks the
+ * fresh token up and stores it. A token is only accepted after `/api/auth/me`
+ * confirms it — the stale one sits in that same localStorage until the SPA
+ * actually refreshes, and the poll must keep waiting through it. Resolves null
+ * when the SPA cannot re-auth on its own (or the network is down): the caller
+ * then keeps asking for a manual login, exactly as before.
+ */
+export function silentRefreshPlatformSession(): Promise<PlatformSession | null> {
+  if (silentRefresh) return silentRefresh
+  silentRefresh = runSilentRefresh().finally(() => {
+    silentRefresh = null
+  })
+  return silentRefresh
+}
+
+async function runSilentRefresh(): Promise<PlatformSession | null> {
+  // a visible login owns the partition; racing it would capture half a login
+  if (activeLogin) return null
+  const createWindow = electronBrowserWindow()
+  if (!createWindow) return null
+
+  const current = loadPlatformSession()
+  const win = createWindow({
+    width: 480,
+    height: 720,
+    show: false,
+    // never promoted to visible: a SPA that needs a human password resolve
+    // null on timeout instead of flashing a window
+    webPreferences: {
+      partition: 'persist:cmlg-platform-login',
+      contextIsolation: true,
+      sandbox: true,
+    },
+  })
+
+  return await new Promise<PlatformSession | null>((resolve) => {
+    let settled = false
+    let timer: ReturnType<typeof setInterval> | null = null
+    const stop = () => {
+      if (timer) clearInterval(timer)
+      timer = null
+    }
+    const done = (value: PlatformSession | null) => {
+      if (settled) return
+      settled = true
+      stop()
+      if (!win.isDestroyed()) win.destroy()
+      resolve(value)
+    }
+
+    win.webContents.on(
+      'did-fail-load',
+      (_event, errorCode, errorDescription, url, isMainFrame) => {
+        // -3 is ERR_ABORTED: an in-app redirect the SPA itself triggered
+        if (!isMainFrame || errorCode === -3) return
+        done(null)
+      },
+    )
+
+    timer = setInterval(() => {
+      void (async () => {
+        if (win.isDestroyed()) return done(null)
+        const captured = await readWindowSession(win)
+        if (!captured) return
+        // the still-cached expired token is not progress; wait for the SPA's own refresh
+        const token = String(captured.token)
+        if (current && token === current.token) return
+        const tenantId =
+          str(asRecord(captured.user).tenant_id) ?? current?.tenantId ?? DEFAULT_TENANT
+        const user = await fetchMe(token, tenantId).catch(() => null)
+        // 401 here means the SPA has not refreshed yet either — keep polling
+        if (!user) return
+        const expiresAt = Number(captured.expires_at)
+        const session: PlatformSession = {
+          token,
+          tenantId: user.tenantId ?? tenantId,
+          user,
+          ...(Number.isFinite(expiresAt) && expiresAt > 0 ? { expiresAt } : {}),
+        }
+        savePlatformSession(session)
+        done(session)
+      })()
+    }, SESSION_POLL_MS)
+
+    setTimeout(() => done(null), SILENT_REFRESH_TIMEOUT_MS)
+  })
+}
+
 // ── login window ─────────────────────────────────────────────────────
 
 interface LoginHandle {
@@ -406,15 +520,7 @@ export function startPlatformLogin(emit: (progress: PlatformLoginProgress) => vo
 
   let createWindow:
     ((options: Electron.BrowserWindowConstructorOptions) => BrowserWindow) | undefined
-  try {
-    const require = createRequire(import.meta.url)
-    const { BrowserWindow: Ctor } = require('electron') as {
-      BrowserWindow: new (options: Electron.BrowserWindowConstructorOptions) => BrowserWindow
-    }
-    createWindow = (options) => new Ctor(options)
-  } catch {
-    createWindow = undefined
-  }
+  createWindow = electronBrowserWindow()
 
   // Outside Electron (tests) there is no window to drive.
   if (!createWindow) {

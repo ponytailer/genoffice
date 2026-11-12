@@ -134,6 +134,7 @@ import {
   fetchPlatformModels,
   loadPlatformSession,
   refreshPlatformProfile,
+  silentRefreshPlatformSession,
   startPlatformLogin,
 } from './platform-account'
 import { clearPlatformAiCache, platformAiSnapshot } from './platform-ai'
@@ -4777,9 +4778,19 @@ function registerHomeIpc(): void {
     const session = loadPlatformSession()
     if (!session) return { loggedIn: false, models: [] }
     const result = await fetchPlatformModels(session)
-    // a refused token means the session is gone (revoked/expired): clear it so
-    // the account UI shows the signed-out state instead of an empty model list
-    if (!result.loggedIn) clearPlatformSession()
+    if (!result.loggedIn) {
+      // a refused token usually just means it expired: the platform SPA can
+      // re-mint it, so one hidden-window renewal runs before this switches the
+      // account UI to signed-out (which deletes the session file)
+      const renewed = await silentRefreshPlatformSession()
+      if (renewed) {
+        clearPlatformAiCache()
+        return fetchPlatformModels(renewed)
+      }
+      // the SPA could not renew either: the session is gone (revoked/expired),
+      // so clear it and let the account UI show the signed-out state
+      clearPlatformSession()
+    }
     return result
   })
 

@@ -23,12 +23,29 @@ const state = {
   models: [] as unknown[],
   loggedIn: true,
   credential: null as null | { apiKey: string; apiUrl?: string },
+  /** what silentRefreshPlatformSession() resolves to; null = the SPA could not renew */
+  renewedSession: null as null | { token: string; tenantId: string; user: { id: string; username: string } },
+  refreshCalls: 0,
+  modelFetchTokens: [] as (string | null)[],
 }
 
 vi.mock('../src/main/platform-account', () => ({
   loadPlatformSession: () => state.session,
-  fetchPlatformModels: async () => ({ loggedIn: state.loggedIn, models: state.models }),
+  fetchPlatformModels: async (session: { token: string } | null) => {
+    state.modelFetchTokens.push(session?.token ?? null)
+    // 't2' is the renewed token: it is valid by definition, so the platform
+    // accepts it even when the test pins the old one as refused
+    const ok = state.loggedIn || session?.token === 't2'
+    return { loggedIn: ok, models: state.models }
+  },
   fetchPlatformCredential: async () => state.credential,
+  clearPlatformCredential: () => {},
+  silentRefreshPlatformSession: async () => {
+    state.refreshCalls += 1
+    // mirrors the real renewal: savePlatformSession() swaps the live session
+    if (state.renewedSession) state.session = state.renewedSession
+    return state.renewedSession
+  },
 }))
 
 const { PLATFORM_ENDPOINT_ID, clearPlatformAiCache, platformAiSnapshot } =
@@ -56,6 +73,9 @@ beforeEach(() => {
   state.models = [model()]
   state.loggedIn = true
   state.credential = { apiKey: 'sk-platform' }
+  state.renewedSession = null
+  state.refreshCalls = 0
+  state.modelFetchTokens = []
   clearPlatformAiCache()
 })
 
@@ -141,6 +161,36 @@ describe('platformAiSnapshot', () => {
       loggedIn: false,
       reason: 'signed-out',
     })
+    // the refusal tried one silent renewal; the SPA could not re-auth either
+    expect(state.refreshCalls).toBe(1)
+  })
+
+  it('renews an expired session silently and serves the model list on the fresh token', async () => {
+    state.loggedIn = false
+    state.renewedSession = {
+      token: 't2',
+      tenantId: 'tenant_demo',
+      user: { id: 'u', username: 'u' },
+    }
+    const snap = await platformAiSnapshot(null)
+    expect(state.refreshCalls).toBe(1)
+    // first fetch rode the expired token, the retry the renewed one
+    expect(state.modelFetchTokens).toEqual(['t', 't2'])
+    expect(snap.status).toMatchObject({ loggedIn: true, available: true, reason: 'ok' })
+    expect(snap.settings?.providers.custom?.model).toBe('deepseek-v4-flash')
+  })
+
+  it('does not retry a second renewal after the first one already renewed', async () => {
+    state.loggedIn = false
+    state.renewedSession = {
+      token: 't2',
+      tenantId: 'tenant_demo',
+      user: { id: 'u', username: 'u' },
+    }
+    await platformAiSnapshot(null)
+    // the renewal succeeded but the platform still refuses: one attempt, no loop
+    expect(state.refreshCalls).toBe(1)
+    expect(state.modelFetchTokens).toEqual(['t', 't2'])
   })
 
   it('keeps the platform default first and lists the rest', async () => {

@@ -26,9 +26,12 @@ import {
 } from '@genoffice/ai-provider'
 
 import {
+  clearPlatformCredential,
   fetchPlatformCredential,
   fetchPlatformModels,
   loadPlatformSession,
+  silentRefreshPlatformSession,
+  type PlatformSession,
 } from './platform-account'
 import type { PlatformAiStatus, PlatformModel } from '../shared/home-api'
 
@@ -175,33 +178,70 @@ export function clearPlatformAiCache(): void {
 }
 
 /**
+ * The model-list half of a snapshot: the models become the endpoint, the key
+ * rides along, and an empty usable list degrades instead of inventing a
+ * provider. `null` means the platform refused the session (401/403).
+ */
+async function snapshotFromModelFetch(
+  base: AiSettings | null,
+  session: PlatformSession,
+): Promise<PlatformAiSnapshot | null> {
+  const result = await fetchPlatformModels(session)
+  if (!result.loggedIn) {
+    clearPlatformAiCache()
+    clearPlatformCredential()
+    return null
+  }
+  const models = usableModels(result.models)
+  if (models.length === 0) {
+    cached = null
+    return unavailable('no-models', true)
+  }
+  const credential = await fetchPlatformCredential(session)
+  if (!credential) {
+    cached = null
+    return unavailable('no-key', true)
+  }
+  const gateway = models[0]?.baseUrl || credential.apiUrl || DEFAULT_GATEWAY_BASE
+  cached = { at: Date.now(), token: session.token, models, gateway, key: credential.apiKey }
+  const model = pickModel(cached.models, base)
+  return {
+    status: {
+      loggedIn: true,
+      available: true,
+      models: cached.models.length,
+      reason: 'ok',
+      model: model.name || model.model,
+    },
+    settings: composeSettings(base, cached.models, model, cached.key, cached.gateway),
+  }
+}
+
+/**
  * Whether inference may run right now, plus the settings it must run on.
  *
  * One platform round trip per `SNAPSHOT_TTL_MS`, not per turn: the model list
  * and the gateway key change only when an administrator edits them, and a
  * streaming turn already makes several provider calls.
+ *
+ * A 401/403 (the platform token expired) is not the end of the session: the
+ * platform SPA re-mints `ultrarag_auth` on its own, so one hidden-window
+ * renewal runs before the snapshot gives up and reports signed-out.
  */
 export async function platformAiSnapshot(base: AiSettings | null): Promise<PlatformAiSnapshot> {
   const session = loadPlatformSession()
   if (!session) return SIGNED_OUT
   if (!cached || cached.token !== session.token || Date.now() - cached.at >= SNAPSHOT_TTL_MS) {
-    const result = await fetchPlatformModels(session)
-    if (!result.loggedIn) {
+    const fresh = await snapshotFromModelFetch(base, session)
+    if (fresh) return fresh
+    // the session was refused — one silent renewal before showing signed-out
+    const renewed = await silentRefreshPlatformSession()
+    if (renewed) {
       clearPlatformAiCache()
-      return SIGNED_OUT
+      const retried = await snapshotFromModelFetch(base, renewed)
+      if (retried) return retried
     }
-    const models = usableModels(result.models)
-    if (models.length === 0) {
-      cached = null
-      return unavailable('no-models', true)
-    }
-    const credential = await fetchPlatformCredential(session)
-    if (!credential) {
-      cached = null
-      return unavailable('no-key', true)
-    }
-    const gateway = models[0]?.baseUrl || credential.apiUrl || DEFAULT_GATEWAY_BASE
-    cached = { at: Date.now(), token: session.token, models, gateway, key: credential.apiKey }
+    return SIGNED_OUT
   }
   const model = pickModel(cached.models, base)
   return {

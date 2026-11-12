@@ -35,7 +35,6 @@ import { realCliRunner } from './real-cli'
 
 const DEFAULT_NAMES = [
   'apply_ops',
-  'check_document',
   'apply_sheet_ops',
   'apply_slide_ops',
   'create_session',
@@ -47,22 +46,13 @@ const DEFAULT_NAMES = [
   'read_deck',
   'read_document',
   'read_docx',
-  'read_docx_properties',
   'read_pdf',
   'read_sheet',
   'replace_blocks',
-  'sheet_links',
   'save_session',
 ].sort()
 
-const BACKGROUND_NAMES = [
-  ...DEFAULT_NAMES,
-  'convert_document',
-  'create_docx',
-  'create_pptx',
-  'create_xlsx',
-  'fill_template',
-].sort()
+const BACKGROUND_NAMES = [...DEFAULT_NAMES, 'create_docx', 'create_pptx', 'create_xlsx'].sort()
 
 function freePort(): Promise<number> {
   return new Promise((resolve, reject) => {

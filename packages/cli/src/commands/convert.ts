@@ -5,7 +5,6 @@ import { PdfLoadError } from '@genoffice/pdf2docx'
 import { flagBool, flagString, type ParsedArgs } from '../args'
 import { csvToXlsx, sheetNameFromStem } from '../formats/csv'
 import { convertHwp } from '../formats/hwp'
-import { convertLegacyDoc } from '../formats/legacy-doc'
 import { convertLegacyPpt } from '../formats/legacy-ppt'
 import { convertOdp, convertOdt } from '../formats/odf'
 import { convertPdf, type PdfTarget } from '../formats/pdf'
@@ -29,8 +28,6 @@ const NODE_ROUTES: Record<string, readonly string[]> = {
   ott: ['docx'],
   hwpx: ['docx'],
   hwp: ['docx'],
-  doc: ['docx'],
-  dot: ['docx'],
   odp: ['pptx'],
   otp: ['pptx'],
   ppt: ['pptx'],
@@ -196,10 +193,6 @@ async function run(
   }
   if (from === 'odp' || from === 'otp') {
     const r = await convertOdp(readInput(input))
-    return { bytes: r.bytes, detail: r.detail }
-  }
-  if (from === 'doc' || from === 'dot') {
-    const r = await convertLegacyDoc(readInput(input))
     return { bytes: r.bytes, detail: r.detail }
   }
   if (from === 'ppt') {

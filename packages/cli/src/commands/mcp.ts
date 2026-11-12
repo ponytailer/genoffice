@@ -15,7 +15,7 @@ import { flagBool, flagString } from '../args'
 import type { CommandContext, CommandDef } from '../registry'
 import { CliError, EXIT, type Warning } from '../result'
 import { didYouMean } from '../suggest'
-import { mcpLaunchFromLauncher, withCompactSchemas, type McpLaunch } from '../mcp-launch'
+import { mcpLaunchFromLauncher, type McpLaunch } from '../mcp-launch'
 import { launcherPath } from './install'
 
 const SUBCOMMANDS = ['install', 'uninstall', 'list']
@@ -25,7 +25,7 @@ export const mcpCommand: CommandDef = {
   summary:
     "Serve every command as a Model Context Protocol tool: on stdio for an MCP client on this machine (`claude mcp add --transport stdio genoffice -- genoffice mcp`, Cursor, Claude Desktop), or with --http as a Streamable HTTP server that clients on other machines reach by URL. Over HTTP, files travel too: PUT /files/<name> uploads one and every tool takes http(s) URLs in place of paths; outputs come back as download URLs and, when small, as embedded resources. Ops, specs and Markdown are passed inline either way; a new deck goes through deck_start, deck_page and deck_build. `mcp install <agent|all>` registers the stdio server in a coding agent's MCP config (Claude Code, Codex, Cursor, Gemini CLI, Copilot CLI, OpenCode, Windsurf); `mcp uninstall <agent>` removes it; `mcp list` shows where each agent stands. The ops, cells and data parameters of the apply and create tools are advertised with the typed per-op schema of `guide <domain> --json`; --compact-schemas (or GENOFFICE_MCP_COMPACT_SCHEMAS=1) advertises them as plain arrays for clients with a small context budget.",
   usage:
-    'mcp [--http <port> [--host <addr>] [--token <secret>]] [--compact-schemas] | mcp install <agent|all> [--dir <path>] [--force] [--compact-schemas] | mcp uninstall <agent|all> [--dir <path>] [--force] | mcp list',
+    'mcp [--http <port> [--host <addr>] [--token <secret>]] [--compact-schemas] | mcp install <agent|all> [--dir <path>] [--force] | mcp uninstall <agent|all> [--dir <path>] [--force] | mcp list',
   quiet: (args) => args.positionals.length === 0,
   options: [
     {
@@ -47,7 +47,7 @@ export const mcpCommand: CommandDef = {
     {
       name: 'compact-schemas',
       description:
-        'advertise ops, cells and data as untyped arrays instead of the per-op schema (smaller tools/list; also GENOFFICE_MCP_COMPACT_SCHEMAS=1); `mcp install --compact-schemas` writes the same toggle into the agent entry',
+        'advertise ops, cells and data as untyped arrays instead of the per-op schema (smaller tools/list; also GENOFFICE_MCP_COMPACT_SCHEMAS=1)',
     },
     {
       name: 'dir',
@@ -78,7 +78,7 @@ export const mcpCommand: CommandDef = {
       }
       return serve(args, ctx)
     }
-    for (const flag of ['http', 'host', 'token']) {
+    for (const flag of ['http', 'host', 'token', 'compact-schemas']) {
       if (flagBool(args, flag)) {
         throw new CliError(
           EXIT.usage,
@@ -90,31 +90,12 @@ export const mcpCommand: CommandDef = {
         )
       }
     }
-    // compact schemas apply when serving (no subcommand) or when the entry records
-    // the toggle; list/uninstall only inspect what is already there
-    if (flagBool(args, 'compact-schemas') && sub !== 'install') {
-      throw new CliError(
-        EXIT.usage,
-        `--compact-schemas serves MCP or registers it; it does not combine with \`mcp ${sub}\``,
-        undefined,
-        {
-          reason: 'invalid_argument',
-        },
-      )
-    }
     switch (sub) {
       case 'list':
         return list(ctx)
       case 'install':
       case 'uninstall':
-        return edit(
-          sub,
-          args.positionals[1],
-          flagString(args, 'dir'),
-          flagBool(args, 'force'),
-          flagBool(args, 'compact-schemas'),
-          ctx,
-        )
+        return edit(sub, args.positionals[1], flagString(args, 'dir'), flagBool(args, 'force'), ctx)
       default:
         throw new CliError(
           EXIT.usage,
@@ -197,8 +178,6 @@ interface AgentRow {
   registered: boolean
   /** what the existing genoffice entry starts, when there is one */
   command: string | null
-  /** the registered entry asks for compact tool schemas (mcp install --compact-schemas) */
-  compactSchemas: boolean
 }
 
 interface Target {
@@ -213,16 +192,12 @@ function home(env: NodeJS.ProcessEnv): string {
 }
 
 /** The entry every config gets: the absolute launcher, or on Windows the app run as Node on the bundle. */
-function launcher(compactSchemas = false): { launcher: string; launch: McpLaunch } {
+function launcher(): { launcher: string; launch: McpLaunch } {
   const path = launcherPath()
   if (!path) throw new CliError(EXIT.app, 'cannot locate the genoffice launcher')
   return {
     launcher: path,
-    launch: mcpLaunchFromLauncher(path, {
-      platform: process.platform,
-      exists: existsSync,
-      compactSchemas,
-    }),
+    launch: mcpLaunchFromLauncher(path, { platform: process.platform, exists: existsSync }),
   }
 }
 
@@ -234,7 +209,6 @@ function row(t: Target, state: McpEntryState): AgentRow {
     config: t.file,
     registered: state.status === 'registered' || state.status === 'stale',
     command: state.command,
-    compactSchemas: state.compactSchemas === true,
   }
 }
 
@@ -250,7 +224,7 @@ function list(ctx: CommandContext) {
   return {
     summary: found.length
       ? `${found.length} agent(s) detected, ${found.filter((a) => a.registered).length} with genoffice registered: ${found
-          .map((a) => `${a.agent} ${a.status}${a.compactSchemas ? ' (compact)' : ''}`)
+          .map((a) => `${a.agent} ${a.status}`)
           .join(', ')}`
       : 'no coding agent detected on this machine',
     detail: { launcher: bin, launch, agents },
@@ -283,7 +257,6 @@ function edit(
   name: string | undefined,
   dir: string | undefined,
   force: boolean,
-  compactSchemas: boolean,
   ctx: CommandContext,
 ) {
   const ids = mcpAgentIds()
@@ -312,8 +285,6 @@ function edit(
     )
   }
   const { launcher: bin, launch } = launcher()
-  /** the form an install asks for: reads always compare against the plain launch */
-  const wanted = verb === 'install' && compactSchemas ? withCompactSchemas(launch) : launch
   const detected = mcpDetected(ctx)
   const targets = (name === 'all' ? ids : [name as AgentId]).map((id) =>
     target(id, dir, detected, ctx),
@@ -352,20 +323,16 @@ function edit(
     else if (before.status === 'manual') status = 'manual'
     else if (before.status === 'occupied' && !force) status = 'occupied'
     else if (verb === 'install') {
-      // an entry that already asks for the requested schema form stays untouched;
-      // a plain entry reports no compactSchemas field, so compare the resolved flag
-      const sameForm =
-        before.status === 'registered' && (before.compactSchemas === true) === compactSchemas
-      if (sameForm) status = 'unchanged'
+      if (before.status === 'registered') status = 'unchanged'
       else {
-        writeMcpEntry(t.id, t.file, wanted)
+        writeMcpEntry(t.id, t.file, launch)
         status = before.status === 'absent' ? 'installed' : 'updated'
       }
     } else status = removeMcpEntry(t.id, t.file) ? 'removed' : 'absent'
     const after = status === 'manual' ? before : readMcpEntry(t.id, t.file, launch)
     const r = { ...row(t, after), status }
     rows.push(
-      status === 'manual' && verb === 'install' ? { ...r, snippet: mcpSnippet(t.id, wanted) } : r,
+      status === 'manual' && verb === 'install' ? { ...r, snippet: mcpSnippet(t.id, launch) } : r,
     )
     if (status === 'occupied' || status === 'manual') {
       warnings.push({

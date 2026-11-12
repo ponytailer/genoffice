@@ -31,15 +31,11 @@ genoffice sheet read book.xlsx [--sheet Data] [--range A1:D20] [--formats] --jso
 genoffice sheet apply book.xlsx --cells cells.json    # [{cell:"B2", value|formula, style?, sheet?}]
 genoffice sheet apply book.xlsx --ops ops.json [--dry-run]   # workbook DSL: cells, formats, charts, tables, filters, conditional formats, validation, links, notes, panes, page setup, sheets (`genoffice guide sheets`)
 genoffice sheet check book.xlsx --json                # formula errors, missing-sheet references, broken defined names, chart ranges off the data, ### columns (suggest: set_col_width), placeholder text, existing rules; exit 0
-genoffice sheet links book.xlsx                       # external [n] links: stored path, resolved path, reachable, source sheets
-genoffice sheet links book.xlsx --update              # re-read reachable sources and write the computed values as the formulas' cached <v> (formulas untouched; unreachable links keep their cache)
-genoffice sheet links book.xlsx --break 1,2           # break links: formulas become their cached values, the links' parts are removed and surviving links renumber
-genoffice create --type docx --from report.md --out report.docx      # or --from fragment.html (restricted HTML); the new file carries Word-like docProps/core.xml + app.xml; --no-generator-fields drops the Application / AppVersion stamps
+genoffice create --type docx --from report.md --out report.docx      # or --from fragment.html (restricted HTML); the new file carries Word-like docProps/core.xml + app.xml
 genoffice convert notes.md --to docx|html
 genoffice convert report.docx --to html               # the Word editor's standalone-HTML export
 genoffice convert page.html --to docx                 # html2docx, same as the HTML app's Export as Word
 genoffice convert report.docx --to md                 # GFM via the markdown editor's serializer
-genoffice convert letter.doc --to docx                # Word 97-2003 .doc/.dot through the in-process doc2docx importer
 genoffice convert book.xlsx --to csv [--sheet Data]   # one sheet, cell text as displayed, UTF-8 BOM, CRLF
 genoffice capabilities --json                        # which cloud features GenOffice has configured (no network call)
 genoffice search "electron headless export" [--images] [--max 6] --json
@@ -58,7 +54,7 @@ genoffice skill install --dir ./skills --force   # copy the bundled skill into a
 genoffice install-cli   # put genoffice on the PATH
 genoffice mcp --http 3000 [--host 127.0.0.1] [--token secret]   # Streamable HTTP for clients on other machines; omit --http for stdio
 genoffice mcp --compact-schemas   # advertise ops/cells/data as plain arrays instead of the per-op schema (smaller tools/list; also GENOFFICE_MCP_COMPACT_SCHEMAS=1)
-genoffice mcp install all   # register the stdio server with every coding agent found (or one: claude-code, codex, cursor, gemini, copilot, opencode, windsurf, dsh)
+genoffice mcp install all   # register the stdio server with every coding agent found (or one: claude-code, codex, cursor, gemini, copilot, opencode, windsurf)
 genoffice mcp list          # each agent's MCP config and whether genoffice is registered; `mcp uninstall <agent>` removes the entry
 ```
 
@@ -133,9 +129,8 @@ runs `GenOffice.exe` as Node on the bundled `genoffice.cjs` with
 `ELECTRON_RUN_AS_NODE=1`, the same entry the app's Settings snippet shows): `~/.claude.json` (Claude Code, user scope; `CLAUDE_CONFIG_DIR`
 honoured), `~/.codex/config.toml` (`[mcp_servers.genoffice]`; `CODEX_HOME`),
 `~/.cursor/mcp.json`, `~/.gemini/settings.json`, `~/.copilot/mcp-config.json`
-(Copilot CLI), `~/.config/opencode/opencode.json`,
-`~/.codeium/windsurf/mcp_config.json` and
-`~/.dsh/cordis.patch.yml` (DeepSeek Harness). Only the `genoffice` key is touched; an
+(Copilot CLI), `~/.config/opencode/opencode.json` and
+`~/.codeium/windsurf/mcp_config.json`. Only the `genoffice` key is touched; an
 entry of that name starting another program is reported as `occupied` and left
 alone unless `--force`, a file that cannot be parsed is reported as `manual`
 with the snippet to paste. `--dir` names the agent's config folder for one
@@ -227,7 +222,7 @@ Independently of the PATH, every launch of the packaged app writes the launcher 
 ## Cloud commands
 
 `search`, `image` and `media` reuse the editors' provider routing. Search uses
-the selected Serper / Serply / SearchApi / Tavily / Parallel provider when its key is configured;
+the selected Serper / Serply / Tavily / Parallel provider when its key is configured;
 otherwise Genspark is the default when signed in (`~/.genoffice/auth.json`)
 and cloud tools are on, then Parallel's free, rate-limited Search MCP, then
 DuckDuckGo. Parallel

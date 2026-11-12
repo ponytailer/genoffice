@@ -11,37 +11,18 @@ export interface McpLaunch {
   env?: Record<string, string>
 }
 
-/**
- * Compact tool schemas are requested through the child's environment, which every
- * agent config shape carries (`mcp install --compact-schemas` writes it), so an
- * entry that asks for them is still the same launcher, just with one option.
- */
-export const COMPACT_SCHEMAS_ENV = 'GENOFFICE_MCP_COMPACT_SCHEMAS'
-
-/** The same launch with compact MCP tool schemas turned on. */
-export function withCompactSchemas(launch: McpLaunch): McpLaunch {
-  return { ...launch, env: { ...launch.env, [COMPACT_SCHEMAS_ENV]: '1' } }
-}
-
 const isWindowsPath = (p: string) => p.includes('\\')
 
 /** The app's snippet: the bare name once genoffice is on the PATH, else the launcher itself. */
-export function mcpLaunch(
-  cli: {
-    status: string
-    launcherDir: string
-    pathHint?: string
-  },
-  opts: { compactSchemas?: boolean } = {},
-): McpLaunch {
+export function mcpLaunch(cli: {
+  status: string
+  launcherDir: string
+  pathHint?: string
+}): McpLaunch {
   const dir = cli.launcherDir
-  if (isWindowsPath(dir)) return compact(windowsAppLaunch(dir), opts)
+  if (isWindowsPath(dir)) return windowsAppLaunch(dir)
   const onPath = cli.status === 'present' && !cli.pathHint
-  return compact({ command: onPath ? 'genoffice' : `${dir}/genoffice`, args: ['mcp'] }, opts)
-}
-
-function compact(launch: McpLaunch, opts: { compactSchemas?: boolean }): McpLaunch {
-  return opts.compactSchemas ? withCompactSchemas(launch) : launch
+  return { command: onPath ? 'genoffice' : `${dir}/genoffice`, args: ['mcp'] }
 }
 
 /** The packaged Windows app binary beside `<install>\resources\cli`. */
@@ -59,8 +40,6 @@ export interface LauncherLaunchOptions {
   platform?: string
   /** test seam for the packaged-app probe */
   exists?: (path: string) => boolean
-  /** `mcp install --compact-schemas`: add the env toggle to the entry */
-  compactSchemas?: boolean
 }
 
 /**
@@ -74,15 +53,15 @@ export function mcpLaunchFromLauncher(
   opts: LauncherLaunchOptions = {},
 ): McpLaunch {
   const win = isWindowsPath(launcher) || opts.platform === 'win32'
-  if (!win) return compact({ command: launcher, args: ['mcp'] }, opts)
+  if (!win) return { command: launcher, args: ['mcp'] }
   const sep = isWindowsPath(launcher) ? '\\' : '/'
   const dir = launcher.slice(0, Math.max(launcher.lastIndexOf('\\'), launcher.lastIndexOf('/')))
   const exists = opts.exists ?? (() => false)
-  if (exists(`${dir}${sep}..${sep}..${sep}${WIN_APP_EXE}`)) return compact(windowsAppLaunch(dir), opts)
+  if (exists(`${dir}${sep}..${sep}..${sep}${WIN_APP_EXE}`)) return windowsAppLaunch(dir)
   // a pre-rename install still has the old binary beside its cli dir
-  if (exists(`${dir}${sep}..${sep}..${sep}GenOffice.exe`)) return compact(windowsAppLaunch(dir), opts)
+  if (exists(`${dir}${sep}..${sep}..${sep}GenOffice.exe`)) return windowsAppLaunch(dir)
   const bundle = exists(`${dir}${sep}genoffice.cjs`)
     ? `${dir}${sep}genoffice.cjs`
     : `${dir}${sep}..${sep}dist${sep}genoffice.cjs`
-  return compact({ command: 'node', args: [bundle, 'mcp'] }, opts)
+  return { command: 'node', args: [bundle, 'mcp'] }
 }

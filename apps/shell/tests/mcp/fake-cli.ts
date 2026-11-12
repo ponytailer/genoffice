@@ -19,8 +19,6 @@ export interface CliCall {
   fromContent?: string
   /** contents of the `--ops` input file at call time, when one was passed */
   opsContent?: string
-  /** contents of the `--data` input file at call time, when one was passed */
-  dataContent?: string
 }
 
 export interface FakeCli {
@@ -34,18 +32,8 @@ export interface FakeCli {
   lastFrom(): string | undefined
   /** the last call's `--ops` file contents */
   lastOps(): string | undefined
-  /** the last call's `--data` file contents */
-  lastData(): string | undefined
   /** reply for `docs read` style commands: the blocks detail items */
   setReadItems(items: Array<Record<string, unknown>>): void
-  /** reply for `docs read --properties`: the document properties object */
-  setDocProperties(properties: Record<string, unknown>): void
-  /** reply for `merge` commands: the result's `detail` object */
-  setMergeDetail(detail: Record<string, unknown>): void
-  /** reply for `docs check` commands: the result's `detail` object */
-  setCheckDetail(detail: Record<string, unknown>): void
-  /** reply for `sheet links` commands: the result's `detail` object */
-  setSheetLinksDetail(detail: Record<string, unknown>): void
   /** make the next run fail with this CLI error message */
   failNext(message: string): void
 }
@@ -53,10 +41,6 @@ export interface FakeCli {
 export function fakeCli(): FakeCli {
   const calls: CliCall[] = []
   let readItems: Array<Record<string, unknown>> = []
-  let docProperties: Record<string, unknown> | undefined
-  let mergeDetail: Record<string, unknown> | undefined
-  let checkDetail: Record<string, unknown> | undefined
-  let sheetLinksDetail: Record<string, unknown> | undefined
   let nextError: string | undefined
 
   const readStaged = (args: string[], flag: string): string | undefined => {
@@ -74,7 +58,6 @@ export function fakeCli(): FakeCli {
       const call: CliCall = { args, input: options?.input }
       call.fromContent = readStaged(args, '--from')
       call.opsContent = readStaged(args, '--ops')
-      call.dataContent = readStaged(args, '--data')
       calls.push(call)
       if (nextError !== undefined) {
         const message = nextError
@@ -87,50 +70,13 @@ export function fakeCli(): FakeCli {
           stderr: '',
         }
       }
-      // `docs check`: the scripted quality report; `docs read`: the block items
+      // `docs read`: hand back the scripted block items
       if (args[0] === 'docs') {
-        if (args[1] === 'check') {
-          const json = {
-            status: 'ok' as const,
-            command: 'docs',
-            summary: 'check',
-            detail: checkDetail ?? {},
-          }
-          return { ok: true, code: 0, json, stdout: JSON.stringify(json), stderr: '' }
-        }
         const json = {
           status: 'ok' as const,
           command: 'docs',
           summary: 'read',
-          detail: {
-            items: readItems,
-            range: `0-${Math.max(0, readItems.length - 1)}`,
-            ...(docProperties !== undefined ? { properties: docProperties } : {}),
-          },
-        }
-        return { ok: true, code: 0, json, stdout: JSON.stringify(json), stderr: '' }
-      }
-      // `merge`: write a stub file at --out and hand back the scripted detail
-      if (args[0] === 'merge') {
-        const outIndex = args.indexOf('--out')
-        const out = outIndex >= 0 ? args[outIndex + 1] : undefined
-        if (out) writeFileSync(out, 'stub')
-        const json = {
-          status: 'ok' as const,
-          command: 'merge',
-          summary: 'merged',
-          ...(out ? { output_path: out } : {}),
-          detail: mergeDetail ?? {},
-        }
-        return { ok: true, code: 0, json, stdout: JSON.stringify(json), stderr: '' }
-      }
-      // `sheet links`: hand back the scripted detail (links report or a mutation result)
-      if (args[0] === 'sheet' && args[1] === 'links') {
-        const json = {
-          status: 'ok' as const,
-          command: 'sheet',
-          summary: 'sheet links',
-          detail: sheetLinksDetail ?? {},
+          detail: { items: readItems, range: `0-${Math.max(0, readItems.length - 1)}` },
         }
         return { ok: true, code: 0, json, stdout: JSON.stringify(json), stderr: '' }
       }
@@ -156,21 +102,8 @@ export function fakeCli(): FakeCli {
     lastInput: () => calls.at(-1)?.input,
     lastFrom: () => calls.at(-1)?.fromContent,
     lastOps: () => calls.at(-1)?.opsContent,
-    lastData: () => calls.at(-1)?.dataContent,
     setReadItems: (items) => {
       readItems = items
-    },
-    setDocProperties: (properties) => {
-      docProperties = properties
-    },
-    setMergeDetail: (detail) => {
-      mergeDetail = detail
-    },
-    setCheckDetail: (detail) => {
-      checkDetail = detail
-    },
-    setSheetLinksDetail: (detail) => {
-      sheetLinksDetail = detail
     },
     failNext: (message) => {
       nextError = message

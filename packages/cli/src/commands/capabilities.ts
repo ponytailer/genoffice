@@ -30,8 +30,7 @@ export const capabilitiesCommand: CommandDef = {
     const gskSearch = gsk && searchProvider === 'genspark'
     const customSearch = searchProvider !== 'genspark'
     const search = gskSearch || customSearch
-    const keyedImageSearch =
-      searchProvider === 'serper' || searchProvider === 'serply' || searchProvider === 'searchapi'
+    const keyedImageSearch = searchProvider === 'serper' || searchProvider === 'serply'
     const imageSearch = gskSearch || keyedImageSearch
     const imageGeneration = imageGenerationAvailable(settings, hasGskAuth())
     const mediaAnalysis = mediaAnalysisAvailable(settings, hasGskAuth())

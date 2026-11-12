@@ -395,8 +395,6 @@ export const strings = {
     setAiProvider: '模型服务商',
     setAiModelId: '模型',
     setAiModelSearch: '搜索模型…',
-    setAiThinking: '思考强度',
-    setAiThinkingDefault: '跟随模型默认',
     setAiApiKey: 'API Key',
     setAiKeyHint: '密钥仅保存在本机。',
     setAiBaseUrl: 'Base URL',
@@ -429,7 +427,6 @@ export const strings = {
       '网页与图片搜索使用 Genspark 账号登录；未登录或关闭云工具时改用免费来源。',
     setAiSearchSerperHint: 'Serper 用你的 key 同时提供网页与图片搜索。',
     setAiSearchSerplyHint: 'Serply 用你的 key 同时提供网页与图片搜索。',
-    setAiSearchSearchApiHint: 'SearchApi 用你的 key 同时提供网页与图片搜索。',
     setAiSearchTavilyHint: 'Tavily 用你的 key 提供网页搜索；图片搜索改用免费来源。',
     setAiSearchParallelHint:
       '留空 API key 即可免费使用 Parallel 搜索（用量有限）。填写 key 可使用你的 Parallel 账户。图片搜索使用其他来源。',
@@ -951,8 +948,6 @@ export const strings = {
     setAiProvider: 'Provider',
     setAiModelId: 'Model',
     setAiModelSearch: 'Search models…',
-    setAiThinking: 'Thinking effort',
-    setAiThinkingDefault: 'Model default',
     setAiApiKey: 'API Key',
     setAiKeyHint: 'Stored only on this device.',
     setAiBaseUrl: 'Base URL',
@@ -985,7 +980,6 @@ export const strings = {
       'Web and image search use your Genspark sign-in; signed out or with cloud tools off they fall back to free sources.',
     setAiSearchSerperHint: 'Serper serves both web and image search with your key.',
     setAiSearchSerplyHint: 'Serply serves both web and image search with your key.',
-    setAiSearchSearchApiHint: 'SearchApi serves both web and image search with your key.',
     setAiSearchTavilyHint:
       'Tavily serves web search with your key; image search falls back to free sources.',
     setAiSearchParallelHint:
@@ -1515,8 +1509,6 @@ export const strings = {
     setAiProvider: 'Nhà cung cấp',
     setAiModelId: 'Mô hình',
     setAiModelSearch: 'Tìm mô hình…',
-    setAiThinking: 'Mức suy luận',
-    setAiThinkingDefault: 'Mặc định của mô hình',
     setAiApiKey: 'Khóa API',
     setAiKeyHint: 'Chỉ được lưu trữ trên thiết bị này.',
     setAiBaseUrl: 'URL cơ sở',
@@ -1550,7 +1542,6 @@ export const strings = {
       'Tìm kiếm web và hình ảnh sử dụng thông tin đăng nhập Genspark của bạn; khi đăng xuất hoặc tắt công cụ đám mây, hệ thống sẽ chuyển sang dùng các nguồn miễn phí.',
     setAiSearchSerperHint: 'Serper cung cấp cả tìm kiếm web và hình ảnh bằng khóa của bạn.',
     setAiSearchSerplyHint: 'Serply cung cấp cả tìm kiếm web và hình ảnh bằng key của bạn.',
-    setAiSearchSearchApiHint: 'SearchApi cung cấp cả tìm kiếm web và hình ảnh bằng key của bạn.',
     setAiSearchTavilyHint:
       'Tavily cung cấp tìm kiếm web bằng khóa của bạn; tìm kiếm hình ảnh sẽ chuyển sang dùng các nguồn miễn phí.',
     setAiSearchParallelHint:
@@ -2080,8 +2071,6 @@ export const strings = {
     setAiProvider: 'Sağlayıcı',
     setAiModelId: 'Model',
     setAiModelSearch: 'Model ara…',
-    setAiThinking: 'Düşünma çabası',
-    setAiThinkingDefault: 'Model varsayılanı',
     setAiApiKey: 'API Anahtarı',
     setAiKeyHint: 'Yalnızca bu cihazda saklanır.',
     setAiBaseUrl: 'Temel URL',
@@ -2117,7 +2106,6 @@ export const strings = {
       'Web ve görüntü araması Genspark girişinizi kullanır; çıkış yapılmışsa veya bulut araçları kapalıysa ücretsiz kaynaklara döner.',
     setAiSearchSerperHint: 'Serper, anahtarınızla hem web hem görüntü aramasını sağlar.',
     setAiSearchSerplyHint: 'Serply, anahtarınızla hem web hem görüntü aramasını sağlar.',
-    setAiSearchSearchApiHint: 'SearchApi, anahtarınızla hem web hem görüntü aramasını sağlar.',
     setAiSearchTavilyHint:
       'Tavily, anahtarınızla web aramasını sağlar; görüntü araması ücretsiz kaynaklara döner.',
     setAiSearchParallelHint:
@@ -2660,8 +2648,6 @@ export const strings = {
     setAiProvider: 'プロバイダー',
     setAiModelId: 'モデル',
     setAiModelSearch: 'モデルを検索…',
-    setAiThinking: '思考の強さ',
-    setAiThinkingDefault: 'モデルのデフォルト',
     setAiApiKey: 'APIキー',
     setAiKeyHint: 'キーはこの端末にのみ保存されます。',
     setAiBaseUrl: 'Base URL',
@@ -2693,7 +2679,6 @@ export const strings = {
       'Web 検索と画像検索は Genspark のサインインを使用します。サインアウト時やクラウドツールがオフのときは無料ソースにフォールバックします。',
     setAiSearchSerperHint: 'Serper はあなたのキーで Web 検索と画像検索の両方を提供します。',
     setAiSearchSerplyHint: 'Serply はあなたのキーで Web 検索と画像検索の両方を提供します。',
-    setAiSearchSearchApiHint: 'SearchApi はあなたのキーで Web 検索と画像検索の両方を提供します。',
     setAiSearchTavilyHint:
       'Tavily はあなたのキーで Web 検索を提供します。画像検索は無料ソースにフォールバックします。',
     setAiSearchParallelHint:
@@ -3227,8 +3212,6 @@ export const strings = {
     setAiProvider: '제공업체',
     setAiModelId: '모델',
     setAiModelSearch: '모델 검색…',
-    setAiThinking: '사고 강도',
-    setAiThinkingDefault: '모델 기본값',
     setAiApiKey: 'API 키',
     setAiKeyHint: '키는 이 기기에만 저장됩니다.',
     setAiBaseUrl: 'Base URL',
@@ -3260,7 +3243,6 @@ export const strings = {
       '웹 검색과 이미지 검색은 Genspark 로그인을 사용합니다. 로그아웃 상태거나 클라우드 도구가 꺼져 있으면 무료 소스로 대체됩니다.',
     setAiSearchSerperHint: 'Serper는 내 키로 웹 검색과 이미지 검색을 모두 제공합니다.',
     setAiSearchSerplyHint: 'Serply는 내 키로 웹 검색과 이미지 검색을 모두 제공합니다.',
-    setAiSearchSearchApiHint: 'SearchApi는 내 키로 웹 검색과 이미지 검색을 모두 제공합니다.',
     setAiSearchTavilyHint:
       'Tavily는 내 키로 웹 검색을 제공합니다. 이미지 검색은 무료 소스로 대체됩니다.',
     setAiSearchParallelHint:
@@ -3809,8 +3791,6 @@ export const strings = {
     setAiProvider: 'Fournisseur',
     setAiModelId: 'Modèle',
     setAiModelSearch: 'Rechercher un modèle…',
-    setAiThinking: 'Niveau de raisonnement',
-    setAiThinkingDefault: 'Défaut du modèle',
     setAiApiKey: 'Clé API',
     setAiKeyHint: 'Stockée uniquement sur cet appareil.',
     setAiBaseUrl: 'Base URL',
@@ -3846,8 +3826,6 @@ export const strings = {
       "Serper assure la recherche web et la recherche d'images avec votre clé.",
     setAiSearchSerplyHint:
       "Serply assure la recherche web et la recherche d'images avec votre clé.",
-    setAiSearchSearchApiHint:
-      "SearchApi assure la recherche web et la recherche d'images avec votre clé.",
     setAiSearchTavilyHint:
       "Tavily assure la recherche web avec votre clé ; la recherche d'images se rabat sur des sources gratuites.",
     setAiSearchParallelHint:
@@ -4399,8 +4377,6 @@ export const strings = {
     setAiProvider: 'Anbieter',
     setAiModelId: 'Modell',
     setAiModelSearch: 'Modelle suchen…',
-    setAiThinking: 'Denkanstrengung',
-    setAiThinkingDefault: 'Modellstandard',
     setAiApiKey: 'API-Schlüssel',
     setAiKeyHint: 'Wird nur auf diesem Gerät gespeichert.',
     setAiBaseUrl: 'Base URL',
@@ -4434,7 +4410,6 @@ export const strings = {
       'Web- und Bildsuche nutzen deine Genspark-Anmeldung; abgemeldet oder mit ausgeschalteten Cloud-Tools greifen sie auf kostenlose Quellen zurück.',
     setAiSearchSerperHint: 'Serper liefert mit deinem Schlüssel Web- und Bildsuche.',
     setAiSearchSerplyHint: 'Serply liefert mit deinem Schlüssel Web- und Bildsuche.',
-    setAiSearchSearchApiHint: 'SearchApi liefert mit deinem Schlüssel Web- und Bildsuche.',
     setAiSearchTavilyHint:
       'Tavily liefert mit deinem Schlüssel die Websuche; die Bildsuche greift auf kostenlose Quellen zurück.',
     setAiSearchParallelHint:
@@ -4982,8 +4957,6 @@ export const strings = {
     setAiProvider: 'Proveedor',
     setAiModelId: 'Modelo',
     setAiModelSearch: 'Buscar modelos…',
-    setAiThinking: 'Esfuerzo de razonamiento',
-    setAiThinkingDefault: 'Predeterminado del modelo',
     setAiApiKey: 'Clave de API',
     setAiKeyHint: 'Se guarda solo en este dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -5017,7 +4990,6 @@ export const strings = {
       'La búsqueda web y de imágenes usa tu inicio de sesión de Genspark; sin sesión o con las herramientas en la nube desactivadas recurre a fuentes gratuitas.',
     setAiSearchSerperHint: 'Serper ofrece búsqueda web y de imágenes con tu clave.',
     setAiSearchSerplyHint: 'Serply ofrece búsqueda web y de imágenes con tu clave.',
-    setAiSearchSearchApiHint: 'SearchApi ofrece búsqueda web y de imágenes con tu clave.',
     setAiSearchTavilyHint:
       'Tavily ofrece búsqueda web con tu clave; la búsqueda de imágenes recurre a fuentes gratuitas.',
     setAiSearchParallelHint:
@@ -5551,8 +5523,6 @@ export const strings = {
     setAiProvider: 'ผู้ให้บริการ',
     setAiModelId: 'โมเดล',
     setAiModelSearch: 'ค้นหาโมเดล…',
-    setAiThinking: 'ระดับการคิด',
-    setAiThinkingDefault: 'ค่าเริ่มต้นของโมเดล',
     setAiApiKey: 'คีย์ API',
     setAiKeyHint: 'จัดเก็บไว้ในเครื่องนี้เท่านั้น',
     setAiBaseUrl: 'Base URL',
@@ -5585,7 +5555,6 @@ export const strings = {
       'การค้นหาเว็บและภาพใช้การลงชื่อเข้าใช้ Genspark หากไม่ได้ลงชื่อเข้าใช้หรือปิดเครื่องมือคลาวด์ จะใช้แหล่งข้อมูลฟรีแทน',
     setAiSearchSerperHint: 'Serper ให้บริการค้นหาเว็บและภาพด้วยคีย์ของคุณ',
     setAiSearchSerplyHint: 'Serply ให้บริการค้นหาเว็บและภาพด้วยคีย์ของคุณ',
-    setAiSearchSearchApiHint: 'SearchApi ให้บริการค้นหาเว็บและภาพด้วยคีย์ของคุณ',
     setAiSearchTavilyHint:
       'Tavily ให้บริการค้นหาเว็บด้วยคีย์ของคุณ ส่วนการค้นหาภาพจะใช้แหล่งข้อมูลฟรีแทน',
     setAiSearchParallelHint:
@@ -6123,8 +6092,6 @@ export const strings = {
     setAiProvider: 'Penyedia',
     setAiModelId: 'Model',
     setAiModelSearch: 'Cari model…',
-    setAiThinking: 'Tingkat penalaran',
-    setAiThinkingDefault: 'Default model',
     setAiApiKey: 'Kunci API',
     setAiKeyHint: 'Hanya disimpan di perangkat ini.',
     setAiBaseUrl: 'Base URL',
@@ -6157,7 +6124,6 @@ export const strings = {
       'Pencarian web dan gambar memakai login Genspark Anda; saat keluar atau alat cloud dimatikan, keduanya memakai sumber gratis.',
     setAiSearchSerperHint: 'Serper menyediakan pencarian web dan gambar dengan kunci Anda.',
     setAiSearchSerplyHint: 'Serply menyediakan pencarian web dan gambar dengan kunci Anda.',
-    setAiSearchSearchApiHint: 'SearchApi menyediakan pencarian web dan gambar dengan kunci Anda.',
     setAiSearchTavilyHint:
       'Tavily menyediakan pencarian web dengan kunci Anda; pencarian gambar memakai sumber gratis.',
     setAiSearchParallelHint:
@@ -6697,8 +6663,6 @@ export const strings = {
     setAiProvider: 'Провайдер',
     setAiModelId: 'Модель',
     setAiModelSearch: 'Поиск моделей…',
-    setAiThinking: 'Уровень рассуждений',
-    setAiThinkingDefault: 'По умолчанию модели',
     setAiApiKey: 'API-ключ',
     setAiKeyHint: 'Хранится только на этом устройстве.',
     setAiBaseUrl: 'Базовый URL',
@@ -6732,8 +6696,6 @@ export const strings = {
       'Веб-поиск и поиск изображений используют ваш вход в Genspark; без входа или при выключенных облачных инструментах используются бесплатные источники.',
     setAiSearchSerperHint: 'Serper обеспечивает веб-поиск и поиск изображений с вашим ключом.',
     setAiSearchSerplyHint: 'Serply обеспечивает веб-поиск и поиск изображений с вашим ключом.',
-    setAiSearchSearchApiHint:
-      'SearchApi обеспечивает веб-поиск и поиск изображений с вашим ключом.',
     setAiSearchTavilyHint:
       'Tavily обеспечивает веб-поиск с вашим ключом; поиск изображений использует бесплатные источники.',
     setAiSearchParallelHint:
@@ -7269,8 +7231,6 @@ export const strings = {
     setAiProvider: 'المزوّد',
     setAiModelId: 'النموذج',
     setAiModelSearch: 'البحث عن نموذج…',
-    setAiThinking: 'مستوى التفكير',
-    setAiThinkingDefault: 'افتراضي النموذج',
     setAiApiKey: 'مفتاح API',
     setAiKeyHint: 'يُحفظ على هذا الجهاز فقط.',
     setAiBaseUrl: 'Base URL',
@@ -7302,7 +7262,6 @@ export const strings = {
       'يستخدم البحث في الويب والصور تسجيل دخولك إلى Genspark؛ وعند الخروج أو إيقاف الأدوات السحابية يعود إلى مصادر مجانية.',
     setAiSearchSerperHint: 'يوفّر Serper البحث في الويب والصور بمفتاحك.',
     setAiSearchSerplyHint: 'يوفّر Serply البحث في الويب والصور بمفتاحك.',
-    setAiSearchSearchApiHint: 'يوفّر SearchApi البحث في الويب والصور بمفتاحك.',
     setAiSearchTavilyHint:
       'يوفّر Tavily البحث في الويب بمفتاحك؛ ويعود البحث في الصور إلى مصادر مجانية.',
     setAiSearchParallelHint:
@@ -7838,8 +7797,6 @@ export const strings = {
     setAiProvider: 'Provedor',
     setAiModelId: 'Modelo',
     setAiModelSearch: 'Pesquisar modelos…',
-    setAiThinking: 'Esforço de raciocínio',
-    setAiThinkingDefault: 'Padrão do modelo',
     setAiApiKey: 'Chave de API',
     setAiKeyHint: 'Armazenada apenas neste dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -7873,7 +7830,6 @@ export const strings = {
       'A busca na web e de imagens usa o seu login do Genspark; desconectado ou com as ferramentas na nuvem desativadas, recorre a fontes gratuitas.',
     setAiSearchSerperHint: 'O Serper oferece busca na web e de imagens com a sua chave.',
     setAiSearchSerplyHint: 'O Serply oferece busca na web e de imagens com a sua chave.',
-    setAiSearchSearchApiHint: 'A SearchApi oferece busca na web e de imagens com a sua chave.',
     setAiSearchTavilyHint:
       'O Tavily oferece busca na web com a sua chave; a busca de imagens recorre a fontes gratuitas.',
     setAiSearchParallelHint:
@@ -8409,8 +8365,6 @@ export const strings = {
     setAiProvider: 'Provider',
     setAiModelId: 'Modello',
     setAiModelSearch: 'Cerca modelli…',
-    setAiThinking: 'Sforzo di ragionamento',
-    setAiThinkingDefault: 'Predefinito del modello',
     setAiApiKey: 'Chiave API',
     setAiKeyHint: 'Salvata solo su questo dispositivo.',
     setAiBaseUrl: 'Base URL',
@@ -8444,7 +8398,6 @@ export const strings = {
       'La ricerca web e di immagini usa il tuo accesso Genspark; disconnesso o con gli strumenti cloud disattivati ricorre a fonti gratuite.',
     setAiSearchSerperHint: 'Serper offre ricerca web e di immagini con la tua chiave.',
     setAiSearchSerplyHint: 'Serply offre ricerca web e di immagini con la tua chiave.',
-    setAiSearchSearchApiHint: 'SearchApi offre ricerca web e di immagini con la tua chiave.',
     setAiSearchTavilyHint:
       'Tavily offre la ricerca web con la tua chiave; la ricerca di immagini ricorre a fonti gratuite.',
     setAiSearchParallelHint:
@@ -8978,8 +8931,6 @@ export const strings = {
     setAiProvider: 'Dostawca',
     setAiModelId: 'Model',
     setAiModelSearch: 'Szukaj modeli…',
-    setAiThinking: 'Poziom rozumowania',
-    setAiThinkingDefault: 'Domyślny modelu',
     setAiApiKey: 'Klucz API',
     setAiKeyHint: 'Przechowywany tylko na tym urządzeniu.',
     setAiBaseUrl: 'Base URL',
@@ -9014,7 +8965,6 @@ export const strings = {
       'Wyszukiwanie w sieci i obrazów korzysta z logowania Genspark; po wylogowaniu lub przy wyłączonych narzędziach chmurowych używa darmowych źródeł.',
     setAiSearchSerperHint: 'Serper zapewnia wyszukiwanie w sieci i obrazów z Twoim kluczem.',
     setAiSearchSerplyHint: 'Serply zapewnia wyszukiwanie w sieci i obrazów z Twoim kluczem.',
-    setAiSearchSearchApiHint: 'SearchApi zapewnia wyszukiwanie w sieci i obrazów z Twoim kluczem.',
     setAiSearchTavilyHint:
       'Tavily zapewnia wyszukiwanie w sieci z Twoim kluczem; wyszukiwanie obrazów używa darmowych źródeł.',
     setAiSearchParallelHint:
@@ -9492,8 +9442,6 @@ export const strings = {
     setAiProvider: 'Poskytovatel',
     setAiModelId: 'Model',
     setAiModelSearch: 'Hledat modely…',
-    setAiThinking: 'Úroveň uvažování',
-    setAiThinkingDefault: 'Výchozí pro model',
     setAiApiKey: 'Klíč API',
     setAiKeyHint: 'Ukládá se pouze na tomto zařízení.',
     setAiBaseUrl: 'Základní URL',
@@ -9528,7 +9476,6 @@ export const strings = {
       'Webové a obrázkové vyhledávání používá vaše přihlášení ke Genspark; při odhlášení nebo vypnutých cloudových nástrojích se použijí bezplatné zdroje.',
     setAiSearchSerperHint: 'Serper zajišťuje webové i obrázkové vyhledávání s vaším klíčem.',
     setAiSearchSerplyHint: 'Serply zajišťuje webové i obrázkové vyhledávání s vaším klíčem.',
-    setAiSearchSearchApiHint: 'SearchApi zajišťuje webové i obrázkové vyhledávání s vaším klíčem.',
     setAiSearchTavilyHint:
       'Tavily zajišťuje webové vyhledávání s vaším klíčem; obrázkové vyhledávání použije bezplatné zdroje.',
     setAiSearchParallelHint:
@@ -10111,8 +10058,6 @@ export const strings = {
     setAiProvider: 'Provider',
     setAiModelId: 'Model',
     setAiModelSearch: 'Modellen zoeken…',
-    setAiThinking: 'Denkinspanning',
-    setAiThinkingDefault: 'Modelstandaard',
     setAiApiKey: 'API-sleutel',
     setAiKeyHint: 'Alleen op dit apparaat opgeslagen.',
     setAiBaseUrl: 'Base URL',
@@ -10146,7 +10091,6 @@ export const strings = {
       'Web- en afbeeldingszoeken gebruiken je Genspark-aanmelding; afgemeld of met cloudtools uit vallen ze terug op gratis bronnen.',
     setAiSearchSerperHint: 'Serper levert web- en afbeeldingszoeken met je sleutel.',
     setAiSearchSerplyHint: 'Serply levert web- en afbeeldingszoeken met je sleutel.',
-    setAiSearchSearchApiHint: 'SearchApi levert web- en afbeeldingszoeken met je sleutel.',
     setAiSearchTavilyHint:
       'Tavily levert webzoeken met je sleutel; afbeeldingszoeken valt terug op gratis bronnen.',
     setAiSearchParallelHint:
@@ -10681,8 +10625,6 @@ export const strings = {
     setAiProvider: 'Penyedia',
     setAiModelId: 'Model',
     setAiModelSearch: 'Cari model…',
-    setAiThinking: 'Tahap penaakulan',
-    setAiThinkingDefault: 'Lalai model',
     setAiApiKey: 'Kunci API',
     setAiKeyHint: 'Disimpan pada peranti ini sahaja.',
     setAiBaseUrl: 'Base URL',
@@ -10717,7 +10659,6 @@ export const strings = {
       'Carian web dan imej menggunakan log masuk Genspark anda; apabila log keluar atau alat awan dimatikan, ia menggunakan sumber percuma.',
     setAiSearchSerperHint: 'Serper menyediakan carian web dan imej dengan kunci anda.',
     setAiSearchSerplyHint: 'Serply menyediakan carian web dan imej dengan kunci anda.',
-    setAiSearchSearchApiHint: 'SearchApi menyediakan carian web dan imej dengan kunci anda.',
     setAiSearchTavilyHint:
       'Tavily menyediakan carian web dengan kunci anda; carian imej menggunakan sumber percuma.',
     setAiSearchParallelHint:
@@ -11241,8 +11182,6 @@ export const strings = {
     setAiProvider: 'ספק',
     setAiModelId: 'מודל',
     setAiModelSearch: 'חיפוש מודלים…',
-    setAiThinking: 'עצימות חשיבה',
-    setAiThinkingDefault: 'ברירת מחדל של המודל',
     setAiApiKey: 'מפתח API',
     setAiKeyHint: 'נשמר רק במכשיר זה.',
     setAiBaseUrl: 'Base URL',
@@ -11274,7 +11213,6 @@ export const strings = {
       'חיפוש באינטרנט ובתמונות משתמש בהתחברות Genspark שלך; כשלא מחוברים או כשכלי הענן כבויים הוא חוזר למקורות חינמיים.',
     setAiSearchSerperHint: 'Serper מספק חיפוש באינטרנט ובתמונות עם המפתח שלך.',
     setAiSearchSerplyHint: 'Serply מספק חיפוש באינטרנט ובתמונות עם המפתח שלך.',
-    setAiSearchSearchApiHint: 'SearchApi מספק חיפוש באינטרנט ובתמונות עם המפתח שלך.',
     setAiSearchTavilyHint:
       'Tavily מספק חיפוש באינטרנט עם המפתח שלך; חיפוש תמונות חוזר למקורות חינמיים.',
     setAiSearchParallelHint:
@@ -11800,8 +11738,6 @@ export const strings = {
     setAiProvider: 'प्रदाता',
     setAiModelId: 'मॉडल',
     setAiModelSearch: 'मॉडल खोजें…',
-    setAiThinking: 'चिंतन प्रयास',
-    setAiThinkingDefault: 'मॉडल डिफ़ॉल्ट',
     setAiApiKey: 'API कुंजी',
     setAiKeyHint: 'केवल इसी डिवाइस पर संग्रहीत।',
     setAiBaseUrl: 'Base URL',
@@ -11835,7 +11771,6 @@ export const strings = {
       'वेब और इमेज खोज आपके Genspark साइन-इन का उपयोग करती हैं; साइन-आउट होने पर या क्लाउड टूल बंद होने पर वे मुफ़्त स्रोतों पर लौट जाती हैं।',
     setAiSearchSerperHint: 'Serper आपकी कुंजी से वेब और इमेज खोज दोनों देता है।',
     setAiSearchSerplyHint: 'Serply आपकी कुंजी से वेब और इमेज खोज दोनों देता है।',
-    setAiSearchSearchApiHint: 'SearchApi आपकी कुंजी से वेब और इमेज खोज दोनों देता है।',
     setAiSearchTavilyHint:
       'Tavily आपकी कुंजी से वेब खोज देता है; इमेज खोज मुफ़्त स्रोतों पर लौट जाती है।',
     setAiSearchParallelHint:
@@ -12348,8 +12283,6 @@ export const strings = {
     setAiProvider: '模型服務商',
     setAiModelId: '模型',
     setAiModelSearch: '搜尋模型…',
-    setAiThinking: '思考強度',
-    setAiThinkingDefault: '跟隨模型預設',
     setAiApiKey: 'API Key',
     setAiKeyHint: '金鑰僅儲存在本機。',
     setAiBaseUrl: 'Base URL',
@@ -12382,7 +12315,6 @@ export const strings = {
       '網頁與圖片搜尋使用 Genspark 帳號登入；未登入或關閉雲端工具時改用免費來源。',
     setAiSearchSerperHint: 'Serper 用你的 key 同時提供網頁與圖片搜尋。',
     setAiSearchSerplyHint: 'Serply 用你的 key 同時提供網頁與圖片搜尋。',
-    setAiSearchSearchApiHint: 'SearchApi 用你的 key 同時提供網頁與圖片搜尋。',
     setAiSearchTavilyHint: 'Tavily 用你的 key 提供網頁搜尋；圖片搜尋改用免費來源。',
     setAiSearchParallelHint:
       '留空 API key 即可免費使用 Parallel 搜尋（用量有限）。填寫 key 可使用你的 Parallel 帳戶。圖片搜尋使用其他來源。',

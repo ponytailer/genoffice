@@ -7,7 +7,6 @@
 // see ./custom-profile.ts), which rides into the slot so the registry can read
 // it from the config alone.
 import { normalizeCustomProfile } from './custom-profile'
-import { isThinkingEffort } from './thinking-effort'
 import type { AiCustomEndpoint, AiProviderConfig, AiSettings } from './types'
 
 const ID_ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789'
@@ -22,19 +21,6 @@ const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '')
 
 function configuredSlot(config: AiProviderConfig | undefined): boolean {
   return Boolean(str(config?.baseUrl) || str(config?.model) || str(config?.apiKey))
-}
-
-/** Per-model thinking picks of a stored entry: known levels only, empty model ids dropped. */
-function thinkingFieldsOf(raw: { thinking?: unknown }): Pick<AiCustomEndpoint, 'thinking'> {
-  const rawThinking = raw.thinking
-  if (typeof rawThinking !== 'object' || rawThinking === null || Array.isArray(rawThinking)) {
-    return {}
-  }
-  const thinking: Record<string, string> = {}
-  for (const [model, level] of Object.entries(rawThinking as Record<string, unknown>)) {
-    if (model !== '' && isThinkingEffort(level)) thinking[model] = level
-  }
-  return Object.keys(thinking).length > 0 ? { thinking } : {}
 }
 
 /** The profile fields of a stored entry, normalized (unknown keys dropped, bounds applied). */
@@ -77,7 +63,6 @@ function normalizeEndpoints(raw: unknown): AiCustomEndpoint[] {
       apiKey: str(e.apiKey),
       model: str(e.model),
       ...profileFieldsOf(e),
-      ...thinkingFieldsOf(e),
       ...(models && models.length > 0 ? { models } : {}),
     })
   }
@@ -102,7 +87,6 @@ export function resolveCustomEndpoints(settings: AiSettings): AiSettings {
         apiKey: str(slot?.apiKey),
         model: str(slot?.model),
         ...profileFieldsOf((slot?.profile ?? {}) as Record<string, unknown>),
-        ...thinkingFieldsOf(slot ?? {}),
       },
     ]
   }
@@ -120,7 +104,6 @@ export function resolveCustomEndpoints(settings: AiSettings): AiSettings {
     apiKey: _apiKey,
     model: _model,
     models: _models,
-    thinking,
     ...profile
   } = active
   const profileOnly = Object.keys(profile).length > 0 ? profile : undefined
@@ -134,8 +117,6 @@ export function resolveCustomEndpoints(settings: AiSettings): AiSettings {
         apiKey: active.apiKey,
         model: active.model,
         baseUrl: active.baseUrl,
-        // the pick must reach the request path (providers.custom is all it reads)
-        ...(thinking ? { thinking } : {}),
         ...(profileOnly ? { profile } : {}),
       },
     },

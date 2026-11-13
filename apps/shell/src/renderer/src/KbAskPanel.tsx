@@ -8,6 +8,7 @@ import {
   createDocumentSkill,
   createIpcTransport,
   createKnowledgeBaseSkill,
+  createWebSearchSkill,
   RUN_GENOFFICE_TOOL,
   withAttachedSkills,
   type AgentImage,
@@ -65,6 +66,20 @@ import sendStop from './assets/send-stop.png'
 
 /** The one transcript the panel keeps. Stable across launches by design. */
 const CHAT_ID = 'kb-ask'
+
+/**
+ * Web-search switch. On by default: an assistant that cannot look anything up
+ * answers dated questions from memory, and this panel's whole point is answering
+ * questions about the user's world. Stored in localStorage so it survives a
+ * reload; it is a per-conversation stance, not an app setting.
+ */
+const WEB_SEARCH_KEY = 'home-ask-web-search'
+
+function loadWebSearchPref(): boolean {
+  // off until the user opts in: a search reaches the public internet, so the
+  // panel must not send anything out on its own
+  return localStorage.getItem(WEB_SEARCH_KEY) === '1'
+}
 
 const TOOL_NOTE_LABEL = {
   search: 'askToolSearch',
@@ -201,6 +216,15 @@ export function KbAskPanel({
   const [provider, setProvider] = useState<string | null>(null)
   const corpusRef = useRef<KbFileInfo[]>([])
   const settingsRef = useRef<AiSettings | null>(null)
+  /** composer's web-search switch; the skill re-reads it before every model request */
+  const [webSearchEnabled, setWebSearchEnabled] = useState(loadWebSearchPref)
+  const webSearchEnabledRef = useRef(webSearchEnabled)
+  webSearchEnabledRef.current = webSearchEnabled
+  const toggleWebSearch = () =>
+    setWebSearchEnabled((on) => {
+      localStorage.setItem(WEB_SEARCH_KEY, on ? '0' : '1')
+      return !on
+    })
   const loopRef = useRef<AgentLoop<unknown> | null>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   /** bumped by Stop: an ask still refreshing the corpus must not start its run */
@@ -408,6 +432,11 @@ export function KbAskPanel({
       create: (request) => window.aiOffice.kbCreateDocument(request),
       alsoSaves: [RUN_GENOFFICE_TOOL],
     })
+    const webSkill = createWebSearchSkill({
+      search: (query, maxResults) => window.aiOffice.webSearch(query, maxResults),
+      available: () => webSearchEnabledRef.current,
+      label: (query) => t('askToolWebSearch', { query }),
+    })
     loopRef.current = new AgentLoop({
       transport: createIpcTransport<AiSettings>({
         onStream: (listener) => window.aiOffice.onAiStream(listener),
@@ -430,28 +459,33 @@ export function KbAskPanel({
         filesSkill,
         docSkill,
         cliSkill,
+        webSkill,
       ]),
       events: {
         onText: (text) => patchLast({ text }),
         onToolExecuted: ({ call, execution }) =>
           patchLast((last) => ({ artifacts: settleArtifact(last.artifacts, call, execution) })),
-        onToolStart: (call) =>
+        onToolStart: (call) => {
+          const kind = toolNoteKind(call)
+          // web search names its query rather than a file, so it carries the
+          // whole label itself and leaves the detail chip empty
+          const label =
+            kind === 'web'
+              ? t('askToolWebSearch', { query: String(call.input.query ?? '') })
+              : t(TOOL_NOTE_LABEL[kind])
+          const detail = toolNoteDetail(
+            call,
+            (index) => corpusRef.current[index]?.name,
+            (index) => availableAttachments()[index]?.name,
+          )
           patchLast((last) => ({
             artifacts: (() => {
               const started = artifactFromCall(call, cliContextRef.current?.outDir)
               return started ? [...last.artifacts, started] : last.artifacts
             })(),
-            toolNotes: appendToolNote(last.toolNotes, {
-              kind: toolNoteKind(call),
-              label: t(TOOL_NOTE_LABEL[toolNoteKind(call)]),
-              detail: toolNoteDetail(
-                call,
-                (index) => corpusRef.current[index]?.name,
-                (index) => availableAttachments()[index]?.name,
-              ),
-              count: 1,
-            }),
-          })),
+            toolNotes: appendToolNote(last.toolNotes, { kind, label, detail, count: 1 }),
+          }))
+        },
         onDone: () => finishLast(),
         onUsage: (usage) => {
           runUsageRef.current = addTokenUsage(runUsageRef.current, usage)
@@ -810,7 +844,7 @@ export function KbAskPanel({
               <div className="kb-ask-tools">
                 {m.toolNotes.map((note, j) => (
                   <span key={j} className="kb-ask-tool-note">
-                    {note.kind === 'search' ? (
+                    {note.kind === 'search' || note.kind === 'web' ? (
                       <IconSearch />
                     ) : note.kind === 'create' || note.kind === 'cli' ? (
                       <IconFilePlus />
@@ -963,6 +997,20 @@ export function KbAskPanel({
             />
             <AiSkillChips lang={lang} names={attachedSkills} onRemove={toggleSkill} />
           </>
+        }
+        above={
+          <div className="kb-ask-above">
+            <button
+              type="button"
+              className={`ai-websearch-btn${webSearchEnabled ? ' on' : ''}`}
+              onClick={toggleWebSearch}
+              aria-pressed={webSearchEnabled}
+              title={t(webSearchEnabled ? 'askWebSearchOnTitle' : 'askWebSearchOffTitle')}
+            >
+              <span className="ai-websearch-dot" aria-hidden />
+              <span className="ai-websearch-label">{t('askWebSearchLabel')}</span>
+            </button>
+          </div>
         }
         footerStart={
           <>

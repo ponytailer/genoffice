@@ -215,6 +215,20 @@ const EDIT_STARTER_PROMPTS: StringKey[] = [
 /** resizable panel width: persisted, clamped so neither pane collapses */
 const PANEL_WIDTH_KEY = 'docs-ai-panel-width'
 
+/**
+ * Web-search switch. On by default: an assistant that cannot look anything up
+ * answers dated questions from memory. Kept per-app in localStorage rather than
+ * in app-settings because it is a per-conversation stance, not a UI preference —
+ * but it must survive a reload, so it is persisted.
+ */
+const WEB_SEARCH_KEY = 'docs-ai-web-search'
+
+function loadWebSearchPref(): boolean {
+  // off until the user opts in: a search reaches the public internet, so the
+  // panel must not send anything out on its own
+  return localStorage.getItem(WEB_SEARCH_KEY) === '1'
+}
+
 /** persisted UI preference: highlight AI edits in yellow and ask for confirmation */
 
 /** Clipboard bitmap MIME → attachment extension (corresponds to ATTACHMENT_IMAGE_EXTS) */
@@ -567,6 +581,15 @@ export function AiPanel({
   }
   const trackChangesRef = useRef(trackChanges)
   trackChangesRef.current = trackChanges
+  /** composer's web-search switch; the docs skill re-reads it before every model request */
+  const [webSearchEnabled, setWebSearchEnabled] = useState(loadWebSearchPref)
+  const webSearchEnabledRef = useRef(webSearchEnabled)
+  webSearchEnabledRef.current = webSearchEnabled
+  const toggleWebSearch = () =>
+    setWebSearchEnabled((on) => {
+      localStorage.setItem(WEB_SEARCH_KEY, on ? '0' : '1')
+      return !on
+    })
   const commentsAccessRef = useRef(commentsAccess)
   commentsAccessRef.current = commentsAccess
   const hfAccessRef = useRef(hfAccess)
@@ -839,6 +862,7 @@ export function AiPanel({
           () => docExtrasRef.current,
           () => notesAccessRef.current,
           () => mediaAnalysisAvailable(settingsRef.current, gskLoggedInRef.current),
+          () => webSearchEnabledRef.current,
         ),
         createFilesSkill(availableAttachments),
         createSkillsSkill(),
@@ -1803,6 +1827,20 @@ export function AiPanel({
           }
           onQueue={enqueueDraft}
           queuePlaceholder={AI_QUEUE_LABELS[lang].queuePlaceholder}
+          above={
+            <div className="ai-composer-above">
+              <button
+                type="button"
+                className={`ai-websearch-btn${webSearchEnabled ? ' on' : ''}`}
+                onClick={toggleWebSearch}
+                aria-pressed={webSearchEnabled}
+                data-tip={webSearchEnabled ? t('aiWebSearchOnTitle') : t('aiWebSearchOffTitle')}
+              >
+                <span className="ai-websearch-dot" aria-hidden />
+                <span className="ai-websearch-label">{t('aiWebSearchLabel')}</span>
+              </button>
+            </div>
+          }
           header={
             (hasScopeSelection || attachments.length > 0 || attachedSkills.length > 0) && (
               <>

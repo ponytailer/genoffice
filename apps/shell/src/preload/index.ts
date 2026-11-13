@@ -175,6 +175,12 @@ const homeApi: HomeApi = {
   async kbList() {
     return ipcRenderer.invoke('kb:list')
   },
+  // shared search tools: the handler is registered by docs-main's registerAiIpc(),
+  // which the shell calls at startup, so the ask panel reaches the same backend
+  // every editor panel uses
+  async webSearch(query, maxResults) {
+    return ipcRenderer.invoke('ai:web-search', query, maxResults)
+  },
   async skillsList() {
     return ipcRenderer.invoke('ai:skills-list')
   },

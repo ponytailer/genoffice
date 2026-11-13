@@ -21,6 +21,7 @@ import type {
   KbFileInfo,
   KbReadPage,
   KbSearchHit,
+  WebSearchOutcome,
 } from '@genoffice/agent-core'
 import type { AiPanelPrefs } from '@genoffice/ui/ai-panel-prefs'
 
@@ -324,6 +325,8 @@ export interface HomeApi {
   aiStreamCancel(requestId: string): Promise<void>
   /** subscribe to stream chunks; returns unsubscribe */
   onAiStream(handler: (chunk: AiStreamChunk) => void): () => void
+  /** one web search over the shared ai:web-search handler (Serper, DuckDuckGo fallback) */
+  webSearch(query: string, maxResults?: number): Promise<WebSearchOutcome>
   /** Genspark login state (the default provider's auth source) */
   aiGskStatus(): Promise<{ loggedIn: boolean; email?: string }>
   /** open an existing file, routing to the right module by extension */

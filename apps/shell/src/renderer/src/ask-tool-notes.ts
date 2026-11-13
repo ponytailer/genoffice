@@ -3,6 +3,7 @@ import {
   LOAD_GUIDE_TOOL,
   READ_ATTACHMENT_TOOL,
   RUN_GENOFFICE_TOOL,
+  WEB_SEARCH_TOOL,
   type AgentToolCall,
 } from '@genoffice/agent-core'
 
@@ -13,7 +14,7 @@ import {
  * repeats the same action on the same target.
  */
 
-export type ToolNoteKind = 'search' | 'read' | 'create' | 'cli'
+export type ToolNoteKind = 'search' | 'web' | 'read' | 'create' | 'cli'
 
 export interface ToolNote {
   label: string
@@ -32,6 +33,7 @@ function baseName(path: string): string {
 
 export function toolNoteKind(call: AgentToolCall): ToolNoteKind {
   if (call.name === 'search_knowledge_base') return 'search'
+  if (call.name === WEB_SEARCH_TOOL) return 'web'
   if (call.name === CREATE_DOCUMENT_TOOL) return 'create'
   if (call.name === RUN_GENOFFICE_TOOL || call.name === LOAD_GUIDE_TOOL) return 'cli'
   return 'read'

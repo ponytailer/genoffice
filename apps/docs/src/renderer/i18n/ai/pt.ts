@@ -101,6 +101,9 @@ export const pt = {
     'Controle de alterações ativado: as edições de conteúdo da IA são marcadas como revisões (inserções sublinhadas, exclusões tachadas); aceite ou rejeite em Revisão',
   aiTrackOffTitle:
     'Controle de alterações desativado: as edições da IA são aplicadas imediatamente (ainda é possível reverter pelos instantâneos de versão)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Pesquisa na web ativada: as respostas podem citar fontes online',
+  aiWebSearchOffTitle: 'Pesquisa na web desativada: apenas o documento e a base de conhecimento',
   aiRevisionBarTitle: 'Revisões',
   aiRevisionCount: '{count} alterações pendentes',
   aiRevisionRejectAll: 'Rejeitar tudo',

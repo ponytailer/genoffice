@@ -10558,6 +10558,18 @@ body.docs-crop-active
     box-shadow var(--transition-fast);
 }
 
+/* the row above the composer box, outside it: switches whose labels would
+ * otherwise compete with the model picker for the footer's width. Left-aligned
+ * with the box's inner padding so the pill's left edge lines up with the
+ * model picker's icon below it. */
+.ai-composer-above {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px 6px;
+}
+
 /* textarea: 16px / 24px fixed line-height (chat body size), auto-grow band
  * (resting height matches the sheets panel, 25% taller than default) */
 .ai-input-box textarea {
@@ -10595,6 +10607,19 @@ body.docs-crop-active
 
 .ai-input-footer .ai-send-btn {
   margin-left: auto;
+}
+
+/* The model picker is this row's pressure valve. A model name has somewhere to
+ * go when it shrinks ("deepseek-v…" still reads as a model), whereas the
+ * two-character CJK labels beside it do not: 修订追踪 lost 9px of its 48px and
+ * ended as "修订…". Let the picker absorb the shrink instead, and keep the
+ * labelled switch whole. */
+.ai-input-footer .ai-model-picker {
+  flex-shrink: 4;
+}
+
+.ai-input-footer .ai-track-btn {
+  flex: 0 0 auto;
 }
 
 /* attach — brand-supplied paperclip art, 20×20 (5/9 of the 36px enter button), same as the sheets panel */

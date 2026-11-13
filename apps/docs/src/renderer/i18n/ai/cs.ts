@@ -100,6 +100,9 @@ export const cs = {
     'Sledování změn zapnuto: úpravy obsahu od AI se označují jako revize (vložení podtržené, odstranění přeškrtnuté); přijměte nebo odmítněte v části Revize',
   aiTrackOffTitle:
     'Sledování změn vypnuto: úpravy AI se použijí okamžitě (stále se můžete vrátit pomocí snímků)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Hledání na webu zapnuto: odpovědi mohou citovat online zdroje',
+  aiWebSearchOffTitle: 'Hledání na webu vypnuto: pouze dokument a znalostní báze',
   aiRevisionBarTitle: 'Revize',
   aiRevisionCount: 'Čekající změny: {count}',
   aiRevisionRejectAll: 'Odmítnout vše',

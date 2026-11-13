@@ -1,0 +1,60 @@
+/* Web-search switch: a quiet gray pill while off, accent-tinted while on.
+ *
+ * Shared by every AI surface that can reach the web (docs, pdf, the home
+ * screen's knowledge-base ask panel) so the control reads the same everywhere.
+ * Colours come from the per-app accent variables (--accent / --accent-soft /
+ * --accent-border), which each app already defines in its own styles.css, so
+ * the pill keeps that app's brand instead of hard-coding one here.
+ *
+ * The pill never shrinks. It carries a short label ("联网" is two characters)
+ * that turns into an ellipsis under even a few pixels of pressure, and the
+ * model picker beside it (min-width 72px, with its own ellipsis) is the row's
+ * intended pressure valve. Letting this shrink first turned "联网" into "联…".
+ *
+ * When a host panel is too narrow to seat the label at all, that host hides
+ * `.ai-websearch-label` (docs does this from a container query on its footer).
+ * The centred rule below keeps the remaining dot from sitting off-centre. */
+.ai-websearch-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 24px;
+  padding: 0 10px;
+  flex: 0 0 auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-30);
+  background: none;
+  color: var(--text-secondary);
+  font-size: var(--text-caption);
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.ai-websearch-btn .ai-websearch-label {
+  white-space: nowrap;
+}
+
+.ai-websearch-btn:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.ai-websearch-btn .ai-websearch-dot {
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--border-strong);
+}
+
+.ai-websearch-btn.on {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.ai-websearch-btn.on .ai-websearch-dot {
+  background: var(--accent);
+}

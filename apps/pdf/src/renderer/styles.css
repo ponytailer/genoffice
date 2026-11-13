@@ -4533,6 +4533,16 @@ button {
     box-shadow var(--transition-fast);
 }
 
+/* the row above the composer box, outside it: the web-search switch lives here
+ * so its label never competes with the model picker for the footer's width */
+.ai-composer-above {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px 6px;
+}
+
 /* textarea: 16px / 24px fixed line-height (chat body size), auto-grow band
  * (resting height matches the other AI panels, 25% taller than default) */
 .ai-input-box textarea {
@@ -4576,54 +4586,7 @@ button {
   text-overflow: ellipsis;
 }
 
-/* web-search pill: quiet gray while off, accent-tinted while on (mirrors docs' track-changes pill) */
-.ai-websearch-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  height: 24px;
-  padding: 0 10px;
-  flex: 0 1 auto;
-  min-width: 0;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: none;
-  color: var(--text-secondary);
-  font-size: var(--text-caption);
-  font-weight: 500;
-  cursor: pointer;
-  transition: all var(--transition-fast);
-}
-
-.ai-websearch-btn .ai-websearch-label {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ai-websearch-btn:hover {
-  background: var(--hover);
-  color: var(--text);
-}
-
-.ai-websearch-btn .ai-websearch-dot {
-  width: 6px;
-  height: 6px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--border-strong);
-}
-
-.ai-websearch-btn.on {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.ai-websearch-btn.on .ai-websearch-dot {
-  background: var(--accent);
-}
+/* web-search pill: shared with docs and the home ask panel (@genoffice/ui/ai-web-search.css) */
 
 /* icon-only enter key: transparent button chrome, visuals come from brand-supplied PNGs
  * (gray arrow = disabled, black arrow = enabled), 36×36, same as the other AI panels */

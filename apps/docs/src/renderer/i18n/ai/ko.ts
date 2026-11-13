@@ -98,6 +98,9 @@ export const ko = {
   aiTrackOnTitle:
     '변경 내용 추적 켜짐: AI의 내용 변경은 변경 내용으로 표시됩니다(삽입은 밑줄, 삭제는 취소선). 검토에서 적용하거나 거부하세요',
   aiTrackOffTitle: '변경 내용 추적 꺼짐: AI 변경 사항이 바로 적용됩니다(버전 스냅샷으로 롤백 가능)',
+  aiWebSearchLabel: '웹',
+  aiWebSearchOnTitle: '웹 검색 켜짐: 답변이 온라인 자료를 인용할 수 있습니다',
+  aiWebSearchOffTitle: '웹 검색 꺼짐: 문서와 지식 베이스만 사용합니다',
   aiRevisionBarTitle: '변경 내용',
   aiRevisionCount: '변경 {count}건',
   aiRevisionRejectAll: '모두 거부',

@@ -99,6 +99,9 @@ export const ja = {
     '変更履歴オン:AI による内容の変更は変更履歴として記録されます(挿入は下線、削除は取り消し線)。校閲で承諾または元に戻せます',
   aiTrackOffTitle:
     '変更履歴オフ:AI の変更はすぐに反映されます(バージョンスナップショットからロールバック可能)',
+  aiWebSearchLabel: 'ウェブ',
+  aiWebSearchOnTitle: 'ウェブ検索オン：回答はオンライン情報を引用できます',
+  aiWebSearchOffTitle: 'ウェブ検索オフ：文書とナレッジベースのみで回答します',
   aiRevisionBarTitle: '変更履歴',
   aiRevisionCount: '{count} 件の変更',
   aiRevisionRejectAll: 'すべて元に戻す',

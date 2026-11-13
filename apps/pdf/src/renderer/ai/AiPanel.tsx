@@ -58,7 +58,9 @@ const PANEL_WIDTH_KEY = 'pdf-ai-panel-width'
 const WEB_SEARCH_KEY = 'pdf-ai-web-search'
 
 function loadWebSearchPref(): boolean {
-  return localStorage.getItem(WEB_SEARCH_KEY) !== '0'
+  // off until the user opts in: a search reaches the public internet, so the
+  // panel must not send anything out on its own
+  return localStorage.getItem(WEB_SEARCH_KEY) === '1'
 }
 
 interface ToolActivity {
@@ -889,6 +891,20 @@ export function AiPanel({
               onMove={msgQueue.move}
             />
           }
+          above={
+            <div className="ai-composer-above">
+              <button
+                type="button"
+                className={`ai-websearch-btn${webSearchEnabled ? ' on' : ''}`}
+                onClick={toggleWebSearch}
+                aria-pressed={webSearchEnabled}
+                title={t(webSearchEnabled ? 'aiWebSearchOnTitle' : 'aiWebSearchOffTitle')}
+              >
+                <span className="ai-websearch-dot" aria-hidden />
+                <span className="ai-websearch-label">{t('aiWebSearch')}</span>
+              </button>
+            </div>
+          }
           onQueue={enqueueDraft}
           queuePlaceholder={AI_QUEUE_LABELS[lang].queuePlaceholder}
           value={prompt}
@@ -954,16 +970,6 @@ export function AiPanel({
           iconOnly
           footerStart={
             <>
-              <button
-                type="button"
-                className={`ai-websearch-btn${webSearchEnabled ? ' on' : ''}`}
-                onClick={toggleWebSearch}
-                aria-pressed={webSearchEnabled}
-                title={t(webSearchEnabled ? 'aiWebSearchOnTitle' : 'aiWebSearchOffTitle')}
-              >
-                <span className="ai-websearch-dot" aria-hidden />
-                <span className="ai-websearch-label">{t('aiWebSearch')}</span>
-              </button>
               <AiModelPicker bridge={MODEL_BRIDGE} lang={lang} />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <AiSkillsMenu

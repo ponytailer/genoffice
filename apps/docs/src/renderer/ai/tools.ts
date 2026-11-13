@@ -886,11 +886,19 @@ async function executeAsyncTool(
   editor: Editor,
   call: AgentToolCall,
   signal?: AbortSignal,
+  webSearchAvailable?: () => boolean,
 ): Promise<ToolExecution> {
   switch (call.name) {
     case 'web_search': {
       const query = String(call.input.query ?? '').trim()
       if (!query) return fail(t('aiSumWebSearch'), 'query must not be empty')
+      // the user can switch web search off mid-conversation; honour it here too
+      if (webSearchAvailable?.() === false) {
+        return fail(
+          t('aiSumWebSearch'),
+          'web search is switched off by the user right now. Answer from the document, the knowledge base and the attachments, or ask them to turn web search on.',
+        )
+      }
       const r = await window.desktop.webSearch(query, Number(call.input.maxResults) || 6)
       // a backend failure must not read as "no results" — the model would fabricate conclusions
       if (r.method === 'error') {
@@ -1224,6 +1232,9 @@ export function executeTool(
   pageSetup?: AiPageSetupAccess,
   extras?: AiDocExtras,
   notes?: AiNotesAccess,
+  /** live: the composer's web-search switch. A call that still arrives while the
+   * user has it off (a restored chat, a stale tool list) must not hit the network. */
+  webSearchAvailable?: () => boolean,
 ): ToolExecution | Promise<ToolExecution> {
   const scope = frozen && frozen.doc === editor.state.doc ? frozen.scope : null
   const staleSummary = staleSummaryOf(call)
@@ -1246,7 +1257,7 @@ export function executeTool(
     call.name === 'analyze_media' ||
     call.name === 'create_document'
   ) {
-    return executeAsyncTool(editor, call, signal)
+    return executeAsyncTool(editor, call, signal, webSearchAvailable)
   }
   if (call.name === 'write_document')
     return writeDocument(editor, call, numIds, track, signal, writer)

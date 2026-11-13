@@ -100,6 +100,9 @@ export const id = {
     'Lacak perubahan aktif: perubahan konten AI ditandai sebagai revisi (sisipan digarisbawahi, penghapusan dicoret); terima atau tolak di Tinjau',
   aiTrackOffTitle:
     'Lacak perubahan nonaktif: perubahan AI langsung diterapkan (masih dapat dikembalikan melalui snapshot versi)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Penelusuran web aktif: jawaban dapat mengutip sumber daring',
+  aiWebSearchOffTitle: 'Penelusuran web nonaktif: hanya dokumen dan basis pengetahuan',
   aiRevisionBarTitle: 'Revisi',
   aiRevisionCount: '{count} perubahan tertunda',
   aiRevisionRejectAll: 'Tolak semua',

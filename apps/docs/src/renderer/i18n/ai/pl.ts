@@ -100,6 +100,9 @@ export const pl = {
     'Śledzenie zmian włączone: zmiany treści wprowadzane przez AI są oznaczane jako poprawki (wstawienia podkreślone, usunięcia przekreślone); zaakceptuj lub odrzuć je w sekcji Recenzja',
   aiTrackOffTitle:
     'Śledzenie zmian wyłączone: zmiany AI są stosowane od razu (nadal możesz przywrócić stan przez migawki wersji)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Wyszukiwanie w sieci włączone: odpowiedzi mogą cytować źródła online',
+  aiWebSearchOffTitle: 'Wyszukiwanie w sieci wyłączone: tylko dokument i baza wiedzy',
   aiRevisionBarTitle: 'Zmiany',
   aiRevisionCount: 'Oczekujące zmiany: {count}',
   aiRevisionRejectAll: 'Odrzuć wszystkie',

@@ -99,6 +99,9 @@ export const en = {
     'Track changes on: AI content edits are marked as revisions (insertions underlined, deletions struck through); accept or reject in Review',
   aiTrackOffTitle:
     'Track changes off: AI edits apply immediately (you can still roll back via snapshots)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Web search is on: answers may cite online sources',
+  aiWebSearchOffTitle: 'Web search is off: answers use only the document and knowledge base',
   aiRevisionBarTitle: 'Revisions',
   aiRevisionCount: '{count} pending changes',
   aiRevisionRejectAll: 'Reject all',

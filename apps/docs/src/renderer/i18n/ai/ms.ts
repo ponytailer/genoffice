@@ -100,6 +100,9 @@ export const ms = {
     'Jejak perubahan dihidupkan: suntingan kandungan AI ditandakan sebagai semakan (sisipan bergaris bawah, pemadaman bergaris batal); terima atau tolak dalam Semakan',
   aiTrackOffTitle:
     'Jejak perubahan dimatikan: suntingan AI terus berkuat kuasa (masih boleh dikembalikan melalui snapshot versi)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Carian web dihidupkan: jawapan boleh memetik sumber dalam talian',
+  aiWebSearchOffTitle: 'Carian web dimatikan: hanya dokumen dan pangkalan pengetahuan',
   aiRevisionBarTitle: 'Semakan',
   aiRevisionCount: '{count} perubahan belum selesai',
   aiRevisionRejectAll: 'Tolak semua',

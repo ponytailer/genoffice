@@ -17,6 +17,8 @@ export { composeSkills } from './skill'
 export { withAttachedSkills, type AttachedSkill } from './attached-skills'
 export { createKnowledgeBaseSkill, formatKbSize } from './knowledge-base-skill'
 export type { KnowledgeBaseDeps, KbFileInfo, KbSearchHit, KbReadPage } from './knowledge-base-skill'
+export { createWebSearchSkill, WEB_SEARCH_TOOL } from './web-search-skill'
+export type { WebSearchHit, WebSearchOutcome, WebSearchSkillDeps } from './web-search-skill'
 export {
   createAttachmentsSkill,
   ATTACHMENT_IMAGE_EXTS,

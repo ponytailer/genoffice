@@ -28,6 +28,9 @@ const IMAGE_GEN_OFF_NOTE =
 const MEDIA_ANALYSIS_OFF_NOTE =
   '\n\nNote: analyze_media is currently unavailable (no media provider: signed out of Genspark or cloud tools off, and no media API key in Settings). You cannot see what a picture inside the document shows — tell the user that instead of guessing at its content.'
 
+const WEB_SEARCH_OFF_NOTE =
+  '\n\nNote: web_search is switched off by the user. Answer from the document, the starred knowledge base and the attachments; never present a number or fact you could only have looked up. If the answer genuinely needs current external information, say so and tell the user they can turn web search on.'
+
 /**
  * The docx capability as an AgentSkill: document skeleton context, the five
  * document tools, and the local executor. Future apps register their own
@@ -49,6 +52,8 @@ export function createDocsSkill(
   getNotes?: () => AiNotesAccess | undefined,
   /** same as imageGenAvailable, for analyze_media (seeing pictures that are in the document) */
   mediaAnalysisAvailable?: () => boolean,
+  /** live predicate (the composer's web-search switch); false hides web_search */
+  webSearchAvailable?: () => boolean,
 ): AgentSkill {
   // Selection frozen per run: tools act on the range the prompt described,
   // not on wherever the user's live selection has wandered mid-run. The doc
@@ -61,6 +66,8 @@ export function createDocsSkill(
     if (mediaAnalysisAvailable?.() === false) hidden.add('analyze_media')
     return hidden
   }
+  /** the composer's switch, re-read on every model request */
+  const webSearchOn = (): boolean => webSearchAvailable?.() !== false
   const mediaOffNote = (): string =>
     [...mediaToolsOff()]
       .map((name) => (name === 'generate_image' ? IMAGE_GEN_OFF_NOTE : MEDIA_ANALYSIS_OFF_NOTE))
@@ -77,11 +84,14 @@ export function createDocsSkill(
         ? redactLabelsOf(editor.getJSON() as unknown as Parameters<typeof redactLabelsOf>[0])
         : []
       const redact = labels.length > 0 ? `\n\n${placeholderInstruction(labels)}` : ''
-      return AGENT_SYSTEM_PROMPT + mediaOffNote() + redact
+      return (
+        AGENT_SYSTEM_PROMPT + mediaOffNote() + (webSearchOn() ? '' : WEB_SEARCH_OFF_NOTE) + redact
+      )
     },
     get tools() {
       const hidden = mediaToolsOff()
-      return hidden.size === 0 ? AGENT_TOOLS : AGENT_TOOLS.filter((t) => !hidden.has(t.name))
+      const tools = hidden.size === 0 ? AGENT_TOOLS : AGENT_TOOLS.filter((t) => !hidden.has(t.name))
+      return webSearchOn() ? tools : tools.filter((t) => t.name !== 'web_search')
     },
     buildContext: () => {
       const editor = getEditor()
@@ -109,6 +119,7 @@ export function createDocsSkill(
         getPageSetup?.(),
         getExtras?.(),
         getNotes?.(),
+        webSearchAvailable,
       ),
   }
 }

@@ -101,6 +101,9 @@ export const nl = {
     'Wijzigingen bijhouden aan: AI-inhoudsbewerkingen worden gemarkeerd als revisies (invoegingen onderstreept, verwijderingen doorgehaald); accepteer of weiger ze in Controleren',
   aiTrackOffTitle:
     'Wijzigingen bijhouden uit: AI-bewerkingen worden direct toegepast (terugdraaien kan nog steeds via versiesnapshots)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Webzoekopdracht aan: antwoorden kunnen online bronnen citeren',
+  aiWebSearchOffTitle: 'Webzoekopdracht uit: alleen het document en de kennisbank',
   aiRevisionBarTitle: 'Revisies',
   aiRevisionCount: '{count} openstaande wijzigingen',
   aiRevisionRejectAll: 'Alles weigeren',

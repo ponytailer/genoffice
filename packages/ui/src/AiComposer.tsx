@@ -24,6 +24,7 @@ export function AiComposer({
   ariaLabel,
   header,
   queueStrip,
+  above,
   footerStart,
   iconOnly = false,
   sendIconEnabled,
@@ -51,6 +52,12 @@ export function AiComposer({
   readonly header?: React.ReactNode
   /** queued-messages strip, rendered above the header while replies run */
   readonly queueStrip?: React.ReactNode
+  /**
+   * controls rendered just above the box, outside it: the row the composer is
+   * free to use for switches whose labels would otherwise compete with the
+   * model picker for the footer's width
+   */
+  readonly above?: React.ReactNode
   /** extra controls at the left of the footer (attach button, toggles, …) */
   readonly footerStart?: React.ReactNode
   /** compact variant: no hint text, icon-only enter/stop button (Genspark composer style) */
@@ -93,76 +100,79 @@ export function AiComposer({
   }, [value, ref])
 
   return (
-    <div className="ai-input-box">
-      {queueStrip}
-      {header}
-      <textarea
-        ref={ref}
-        value={value}
-        placeholder={busy && onQueue && queuePlaceholder ? queuePlaceholder : placeholder}
-        aria-label={ariaLabel}
-        rows={1}
-        dir="auto"
-        spellCheck={spellcheck}
-        onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault()
-            if (canSend) onSend()
-            else if (busy && onQueue) onQueue()
-          } else if (e.key === 'Escape' && busy) {
-            e.preventDefault()
-            onStop()
-          }
-        }}
-        onPaste={(e) => {
-          const files = Array.from(e.clipboardData.files)
-          if (files.length > 0) {
-            if (!onPasteFiles) return
-            e.preventDefault()
-            onPasteFiles(files)
-            return
-          }
-          const text = e.clipboardData.getData('text/plain')
-          if (text && onPasteText?.(text)) e.preventDefault()
-        }}
-      />
-      <div className="ai-input-footer">
-        {footerStart}
-        {!iconOnly && (
-          <span className="ai-input-hint" title={busy ? undefined : hintIdleTitle}>
-            {busy ? hintBusy : hintIdle}
-          </span>
-        )}
-        {busy ? (
-          <button
-            className="ai-send-btn ai-stop-btn"
-            onClick={onStop}
-            title={stopLabel}
-            aria-label={stopLabel}
-          >
-            {iconOnly ? (stopIcon ?? <IconStop size={16} />) : <IconStop size={16} />}
-            {!iconOnly && stopLabel}
-          </button>
-        ) : (
-          <button
-            className="ai-send-btn"
-            onClick={onSend}
-            disabled={!canSend}
-            title={sendLabel}
-            aria-label={sendLabel}
-          >
-            {iconOnly ? (
-              ((canSend ? sendIconEnabled : (sendIconDisabled ?? sendIconEnabled)) ?? (
-                <IconEnter size={16} />
-              ))
-            ) : (
-              <IconSend size={16} />
-            )}
-            {!iconOnly && sendLabel}
-          </button>
-        )}
+    <>
+      {above}
+      <div className="ai-input-box">
+        {queueStrip}
+        {header}
+        <textarea
+          ref={ref}
+          value={value}
+          placeholder={busy && onQueue && queuePlaceholder ? queuePlaceholder : placeholder}
+          aria-label={ariaLabel}
+          rows={1}
+          dir="auto"
+          spellCheck={spellcheck}
+          onChange={(e) => onChange(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault()
+              if (canSend) onSend()
+              else if (busy && onQueue) onQueue()
+            } else if (e.key === 'Escape' && busy) {
+              e.preventDefault()
+              onStop()
+            }
+          }}
+          onPaste={(e) => {
+            const files = Array.from(e.clipboardData.files)
+            if (files.length > 0) {
+              if (!onPasteFiles) return
+              e.preventDefault()
+              onPasteFiles(files)
+              return
+            }
+            const text = e.clipboardData.getData('text/plain')
+            if (text && onPasteText?.(text)) e.preventDefault()
+          }}
+        />
+        <div className="ai-input-footer">
+          {footerStart}
+          {!iconOnly && (
+            <span className="ai-input-hint" title={busy ? undefined : hintIdleTitle}>
+              {busy ? hintBusy : hintIdle}
+            </span>
+          )}
+          {busy ? (
+            <button
+              className="ai-send-btn ai-stop-btn"
+              onClick={onStop}
+              title={stopLabel}
+              aria-label={stopLabel}
+            >
+              {iconOnly ? (stopIcon ?? <IconStop size={16} />) : <IconStop size={16} />}
+              {!iconOnly && stopLabel}
+            </button>
+          ) : (
+            <button
+              className="ai-send-btn"
+              onClick={onSend}
+              disabled={!canSend}
+              title={sendLabel}
+              aria-label={sendLabel}
+            >
+              {iconOnly ? (
+                ((canSend ? sendIconEnabled : (sendIconDisabled ?? sendIconEnabled)) ?? (
+                  <IconEnter size={16} />
+                ))
+              ) : (
+                <IconSend size={16} />
+              )}
+              {!iconOnly && sendLabel}
+            </button>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }

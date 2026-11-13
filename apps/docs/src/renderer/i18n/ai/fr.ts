@@ -102,6 +102,10 @@ export const fr = {
     "Suivi des modifications activé : les modifications de contenu de l'IA sont marquées comme révisions (insertions soulignées, suppressions barrées) ; acceptez ou refusez dans Révision",
   aiTrackOffTitle:
     "Suivi des modifications désactivé : les modifications de l'IA s'appliquent immédiatement (vous pouvez toujours restaurer via les instantanés de version)",
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Recherche web activée : les réponses peuvent citer des sources en ligne',
+  aiWebSearchOffTitle:
+    'Recherche web désactivée : seuls le document et la base de connaissances sont utilisés',
   aiRevisionBarTitle: 'Révisions',
   aiRevisionCount: '{count} modifications en attente',
   aiRevisionRejectAll: 'Tout refuser',

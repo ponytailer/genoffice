@@ -100,6 +100,9 @@ export const tr = {
     'Değişiklikleri izleme açık: AI içerik düzenlemeleri düzeltme olarak işaretlenir (eklemeler altı çizili, silmeler üstü çizili); Gözden Geçir sekmesinden kabul edin veya reddedin',
   aiTrackOffTitle:
     'Değişiklikleri izleme kapalı: AI düzenlemeleri hemen uygulanır (anlık görüntülerle yine de geri alabilirsiniz)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Web araması açık: yanıtlar çevrimiçi kaynaklara atıf yapabilir',
+  aiWebSearchOffTitle: 'Web araması kapalı: yalnızca belge ve bilgi tabanı kullanılır',
   aiRevisionBarTitle: 'Düzeltmeler',
   aiRevisionCount: '{count} bekleyen değişiklik',
   aiRevisionRejectAll: 'Tümünü reddet',

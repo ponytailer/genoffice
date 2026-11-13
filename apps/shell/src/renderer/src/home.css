@@ -2608,6 +2608,15 @@ html[dir='rtl'] .quick-title-row {
   align-items: center;
   padding: 4px 8px 8px 10px;
 }
+/* the row above the ask box: the web-search switch lives here, outside the
+ * composer, so its label never competes with the model picker for footer width */
+.kb-ask .kb-ask-above {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0 2px 6px;
+}
 .kb-ask .ai-send-btn {
   display: inline-flex;
   align-items: center;

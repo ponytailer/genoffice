@@ -101,6 +101,10 @@ export const es = {
     'Control de cambios activado: los cambios de contenido de la IA se marcan como revisiones (inserciones subrayadas, eliminaciones tachadas); acéptalas o recházalas en Revisar',
   aiTrackOffTitle:
     'Control de cambios desactivado: los cambios de la IA se aplican de inmediato (aún puedes revertir mediante instantáneas de versión)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Búsqueda web activada: las respuestas pueden citar fuentes en línea',
+  aiWebSearchOffTitle:
+    'Búsqueda web desactivada: solo se usa el documento y la base de conocimiento',
   aiRevisionBarTitle: 'Revisiones',
   aiRevisionCount: '{count} cambios pendientes',
   aiRevisionRejectAll: 'Rechazar todo',

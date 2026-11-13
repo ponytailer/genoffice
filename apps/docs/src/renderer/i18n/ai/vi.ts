@@ -99,6 +99,9 @@ export const vi = {
     'Bật theo dõi thay đổi: Các nội dung AI chỉnh sửa được đánh dấu là bản sửa đổi (chèn có gạch chân, xóa có gạch ngang); chấp nhận hoặc từ chối trong mục Xem lại',
   aiTrackOffTitle:
     'Tắt theo dõi thay đổi: Các chỉnh sửa của AI được áp dụng ngay lập tức (bạn vẫn có thể khôi phục qua bản chụp nhanh)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Đã bật tìm kiếm web: câu trả lời có thể trích dẫn nguồn trực tuyến',
+  aiWebSearchOffTitle: 'Đã tắt tìm kiếm web: chỉ dựa vào tài liệu và cơ sở tri thức',
   aiRevisionBarTitle: 'Sửa đổi',
   aiRevisionCount: '{count} thay đổi đang chờ',
   aiRevisionRejectAll: 'Từ chối tất cả',

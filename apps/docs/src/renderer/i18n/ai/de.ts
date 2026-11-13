@@ -102,6 +102,9 @@ export const de = {
     'Änderungsnachverfolgung ein: KI-Inhaltsänderungen werden als Überarbeitungen markiert (Einfügungen unterstrichen, Löschungen durchgestrichen); unter „Überprüfen“ annehmen oder ablehnen',
   aiTrackOffTitle:
     'Änderungsnachverfolgung aus: KI-Änderungen werden sofort übernommen (Zurücksetzen über Versionsschnappschüsse weiterhin möglich)',
+  aiWebSearchLabel: 'Web',
+  aiWebSearchOnTitle: 'Websuche an: Antworten können Online-Quellen zitieren',
+  aiWebSearchOffTitle: 'Websuche aus: Antworten stützen sich nur auf Dokument und Wissensbasis',
   aiRevisionBarTitle: 'Änderungen',
   aiRevisionCount: '{count} ausstehende Änderungen',
   aiRevisionRejectAll: 'Alle ablehnen',

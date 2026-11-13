@@ -131,6 +131,16 @@ function makeDeps(over: Partial<PdfAiDeps> = {}): PdfAiDeps {
       ],
       method: 'gsk',
     })),
+    webSearch: vi.fn(async () => ({
+      results: [
+        {
+          title: 'Coffee prices hit a record',
+          url: 'https://news.example/coffee',
+          snippet: 'Arabica futures rose 12% in March.',
+        },
+      ],
+      method: 'serper',
+    })),
     generateImage: vi.fn(async () => ({ url: 'https://img.example/generated.png' })),
     fetchImage: vi.fn(async () => ({ png: 'PNGB64', width: 400, height: 300 })),
     createDocument: vi.fn(async () => ({ ok: true, path: '/tmp/out.pdf' })),
@@ -1384,6 +1394,64 @@ describe('get_outline / unknown tools', () => {
     const result = await executePdfTool(makeDeps(), call('nope'))
     expect(result.isError).toBe(true)
     expect(result.output).toContain('Unknown tool')
+  })
+})
+
+describe('web_search', () => {
+  it('lists numbered results with title, link and snippet', async () => {
+    const result = await executePdfTool(makeDeps(), call('web_search', { query: 'coffee prices' }))
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toContain('1. Coffee prices hit a record')
+    expect(result.output).toContain('https://news.example/coffee')
+    expect(result.output).toContain('Arabica futures rose 12% in March.')
+  })
+
+  it('prepends a synthesized answer when the backend returns one', async () => {
+    const deps = makeDeps({
+      webSearch: async () => ({
+        answer: 'Arabica is up 12% this year.',
+        results: [{ title: 'T', url: 'https://e.example', snippet: 'S' }],
+        method: 'tavily',
+      }),
+    })
+    const result = await executePdfTool(deps, call('web_search', { query: 'coffee' }))
+    expect(result.output).toContain('Direct answer: Arabica is up 12% this year.')
+  })
+
+  it('surfaces backend failures as retryable errors, not empty result sets', async () => {
+    const deps = makeDeps({
+      webSearch: async () => ({ results: [], method: 'error', error: 'all engines blocked' }),
+    })
+    const result = await executePdfTool(deps, call('web_search', { query: 'coffee' }))
+    // a failed search read as "no results" would let the model invent an answer
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('not an empty result')
+    expect(result.output).toContain('all engines blocked')
+  })
+
+  it('tells the model to say so when the search genuinely found nothing', async () => {
+    const deps = makeDeps({
+      webSearch: async () => ({ results: [], method: 'duckduckgo' }),
+    })
+    const result = await executePdfTool(deps, call('web_search', { query: 'x' }))
+    expect(result.isError).toBeUndefined()
+    expect(result.output).toContain('returned no results')
+  })
+
+  it('rejects an empty query without calling the backend', async () => {
+    const webSearch = vi.fn()
+    const result = await executePdfTool(makeDeps({ webSearch }), call('web_search', { query: ' ' }))
+    expect(result.isError).toBe(true)
+    expect(webSearch).not.toHaveBeenCalled()
+  })
+
+  it('refuses to hit the network once the user switched it off mid-run', async () => {
+    const webSearch = vi.fn()
+    const deps = makeDeps({ webSearch, webSearchAvailable: () => false })
+    const result = await executePdfTool(deps, call('web_search', { query: 'coffee' }))
+    expect(result.isError).toBe(true)
+    expect(result.output).toContain('switched off')
+    expect(webSearch).not.toHaveBeenCalled()
   })
 })
 

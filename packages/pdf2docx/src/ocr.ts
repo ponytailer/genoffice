@@ -57,6 +57,15 @@ export type OcrEngine = (
   page: { widthPt: number; heightPt: number },
 ) => OcrRecognition | null
 
+/**
+ * Async recognition engine for callers outside the sync PDFium scope — the pdf
+ * viewer's page-by-page pass, whose Electron main process must keep serving IPC
+ * while a page is read. Same result shape and null-means-failed contract as
+ * {@link OcrEngine}, minus the page-size hint (the bundled helpers ignore it).
+ * The conversion pipeline keeps using the sync one.
+ */
+export type AsyncOcrEngine = (png: Uint8Array) => Promise<OcrRecognition | null>
+
 /** below this many recognized non-space chars the "scan" is likely a photo */
 const OCR_MIN_CHARS = 8
 /** mean line confidence below this ships the bitmap instead (garbled text is

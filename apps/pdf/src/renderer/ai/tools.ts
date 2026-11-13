@@ -19,6 +19,7 @@ import type {
   PageImageRef,
   TextEditInput,
   TextInsertInput,
+  WebSearchResponse,
 } from '../../shared/ipc'
 import { groupPageBlocks } from '../text-block'
 import type { TextBlock } from '../text-block'
@@ -172,6 +173,10 @@ export interface PdfAiDeps {
   /** Queue a pending delete of an existing image */
   deleteImage(ref: PageImageRef): void
   searchImages(query: string, maxResults: number): Promise<ImageSearchResponse>
+  /** Web text search (shared ai:web-search handler); method 'error' means the backend failed */
+  webSearch(query: string, maxResults: number): Promise<WebSearchResponse>
+  /** live predicate (the composer's web-search toggle); false hides web_search */
+  webSearchAvailable?(): boolean
   /** live predicate (gsk login && cloud-tools toggle, or a BYOK media key); false hides generate_image */
   imageGenAvailable?(): boolean
   generateImage(op: { prompt: string; aspectRatio?: string }): Promise<{
@@ -645,6 +650,19 @@ export const AGENT_TOOLS: AgentToolDef[] = [
         id: { type: 'string', description: 'Inserted text id from list_inserted_text' },
       },
       required: ['id'],
+    },
+  },
+  {
+    name: 'web_search',
+    description:
+      'Search the web for text information (facts, figures, references, current events). Use it whenever the answer needs something beyond this PDF, and never answer from memory with numbers you did not look up. Returns titles, links and snippets — cite the sources you use.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Search keywords' },
+        max_results: { type: 'integer', description: 'Max results, default 6' },
+      },
+      required: ['query'],
     },
   },
   {
@@ -2769,6 +2787,43 @@ async function resolveImageRef(
   return ref
 }
 
+async function webSearchTool(
+  deps: PdfAiDeps,
+  input: Record<string, unknown>,
+): Promise<ToolExecution> {
+  const query = String(input.query ?? '').trim()
+  const summary = t('aiToolWebSearch', { query })
+  if (!query) return err('query must not be empty', summary)
+  // the user can switch web search off mid-conversation; a call the model still
+  // makes (a restored chat, a stale tool list) must not reach the network
+  if (deps.webSearchAvailable?.() === false) {
+    return err(
+      'web search is switched off by the user right now. Answer from the document alone, or ask them to turn web search on.',
+      summary,
+    )
+  }
+  const r = await deps.webSearch(query, Number(input.max_results) || 6)
+  // a backend failure must not read as "no results" — the model would fabricate conclusions
+  if (r.method === 'error') {
+    return err(
+      `web search failed (service error, not an empty result — you may retry): ${r.error ?? 'unknown error'}`,
+      summary,
+    )
+  }
+  const lines: string[] = []
+  if (r.answer) lines.push(`Direct answer: ${r.answer}\n`)
+  r.results.forEach((it, i) => lines.push(`${i + 1}. ${it.title}\n   ${it.url}\n   ${it.snippet}`))
+  // an empty result set is a real answer, but the model must say so rather than invent one
+  if (lines.length === 0) {
+    return {
+      output:
+        'The search ran but returned no results. Tell the user the web had nothing on this instead of guessing.',
+      summary,
+    }
+  }
+  return { output: lines.join('\n'), summary }
+}
+
 async function imageSearchTool(
   deps: PdfAiDeps,
   input: Record<string, unknown>,
@@ -3584,6 +3639,8 @@ export async function executePdfTool(
       return deleteMarkupTool(deps, input)
     case 'delete_note':
       return deleteNoteTool(deps, input)
+    case 'web_search':
+      return webSearchTool(deps, input)
     case 'image_search':
       return imageSearchTool(deps, input)
     case 'generate_image':

@@ -1019,9 +1019,20 @@ export const AI_CHANNELS = {
   stream: 'ai:stream',
   streamChunk: 'ai:stream-chunk',
   streamCancel: 'ai:stream-cancel',
+  webSearch: 'ai:web-search',
   imageSearch: 'ai:image-search',
   fetchImage: 'ai:fetch-image',
 } as const
+
+export interface WebSearchResponse {
+  /** one-paragraph answer some backends synthesize (Tavily/Parallel/Exa) */
+  answer?: string
+  results: Array<{ title: string; url: string; snippet: string }>
+  /** which backend answered; 'error' means the call failed rather than found nothing */
+  method: string
+  /** failure reason when method === 'error' */
+  error?: string
+}
 
 export interface ImageSearchResponse {
   images: Array<{
@@ -1169,6 +1180,8 @@ export interface PdfApi {
   convertOffice(format: PdfConvertFormat): Promise<void>
   /** AI create_document: build a new standalone file in the default folder and open it in a new tab */
   createDocument(request: CreateDocumentRequest): Promise<CreateDocumentResult>
+  /** Web text search for AI tools (app-wide ai:web-search handler) */
+  webSearch(query: string, maxResults?: number): Promise<WebSearchResponse>
   /** Web image search for AI tools (app-wide ai:image-search handler) */
   imageSearch(query: string, maxResults?: number): Promise<ImageSearchResponse>
   /** Download an image URL in the main process (SSRF-guarded, avoids CORS); null on failure */

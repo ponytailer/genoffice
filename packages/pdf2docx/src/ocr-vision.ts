@@ -10,10 +10,10 @@
  * (Electron main, tests, eval scripts) import this module directly and pass
  * the engine via ConvertOptions.ocr.
  */
-import { spawnSync } from 'node:child_process'
+import { execFile, spawnSync } from 'node:child_process'
 import { existsSync } from 'node:fs'
 import type { Rect } from './geometry'
-import type { OcrEngine, OcrRecognition } from './ocr'
+import type { AsyncOcrEngine, OcrEngine, OcrRecognition } from './ocr'
 
 /** helper output caps: a page render is a few MB, JSON a few hundred KB */
 const HELPER_MAX_BUFFER = 64 * 1024 * 1024
@@ -37,6 +37,28 @@ const toRect = (b: [number, number, number, number]): Rect => ({
   y1: b[3],
 })
 
+/** helper stdout JSON → recognition; null when the helper failed or emitted junk */
+function parseHelperOutput(stdout: string): OcrRecognition | null {
+  let parsed: { lines?: HelperLine[]; paper?: number }
+  try {
+    // defense in depth: .NET Framework consoles can prepend a UTF-8 BOM
+    const text = stdout.replace(/^\uFEFF/, '')
+    parsed = JSON.parse(text) as { lines?: HelperLine[]; paper?: number }
+  } catch {
+    return null
+  }
+  if (!Array.isArray(parsed.lines)) return null
+  return {
+    lines: parsed.lines.map((l) => ({
+      text: l.t,
+      confidence: l.c,
+      box: toRect(l.b),
+      ...(l.chars ? { chars: l.chars.map((c) => ({ text: c.t, box: toRect(c.b) })) } : {}),
+    })),
+    ...(typeof parsed.paper === 'number' ? { paperShare: parsed.paper } : {}),
+  }
+}
+
 /** spawn wrapper shared by the platform engines (protocol is identical) */
 function createHelperOcrEngine(helperPath: string, languages?: string[]): OcrEngine {
   return (png: Uint8Array): OcrRecognition | null => {
@@ -47,25 +69,38 @@ function createHelperOcrEngine(helperPath: string, languages?: string[]): OcrEng
       timeout: HELPER_TIMEOUT_MS,
     })
     if (res.status !== 0 || res.stdout == null) return null
-    let parsed: { lines?: HelperLine[]; paper?: number }
-    try {
-      // defense in depth: .NET Framework consoles can prepend a UTF-8 BOM
-      const text = res.stdout.toString('utf8').replace(/^\uFEFF/, '')
-      parsed = JSON.parse(text) as { lines?: HelperLine[]; paper?: number }
-    } catch {
-      return null
-    }
-    if (!Array.isArray(parsed.lines)) return null
-    return {
-      lines: parsed.lines.map((l) => ({
-        text: l.t,
-        confidence: l.c,
-        box: toRect(l.b),
-        ...(l.chars ? { chars: l.chars.map((c) => ({ text: c.t, box: toRect(c.b) })) } : {}),
-      })),
-      ...(typeof parsed.paper === 'number' ? { paperShare: parsed.paper } : {}),
-    }
+    return parseHelperOutput(res.stdout.toString('utf8'))
   }
+}
+
+/**
+ * Async twin of the spawn wrapper: `execFile` instead of `spawnSync`, so a
+ * recognition no longer parks the caller's event loop for the multi-second
+ * Vision call. Electron's main process shares that loop with every window's
+ * IPC, so the sync engine made the whole app stutter while a page was being
+ * read. Protocol and failure contract are identical to the sync engine.
+ *
+ * Exported with an explicit helper path (no platform gate — that lives in the
+ * per-platform factories below) so tests can drive it with a fake helper on
+ * any OS.
+ */
+export function createAsyncOcrEngine(helperPath: string, languages?: string[]): AsyncOcrEngine {
+  return (png: Uint8Array): Promise<OcrRecognition | null> =>
+    new Promise((resolve) => {
+      const args = languages && languages.length > 0 ? [languages.join(',')] : []
+      const child = execFile(
+        helperPath,
+        args,
+        { encoding: 'utf8', maxBuffer: HELPER_MAX_BUFFER, timeout: HELPER_TIMEOUT_MS },
+        (err, stdout) => {
+          if (err || typeof stdout !== 'string') return resolve(null)
+          resolve(parseHelperOutput(stdout))
+        },
+      )
+      // the helper reads its PNG from stdin and exits on EOF
+      child.stdin?.on('error', () => {}) // a helper that dies early closes stdin under us
+      child.stdin?.end(Buffer.from(png))
+    })
 }
 
 /**
@@ -97,4 +132,28 @@ export function createWindowsOcrEngine(helperPath: string, languages?: string[])
   if (process.platform !== 'win32') return null
   if (!existsSync(helperPath)) return null
   return createHelperOcrEngine(helperPath, languages)
+}
+
+/**
+ * Async counterpart of createVisionOcrEngine for callers that live on a shared
+ * event loop (Electron main, the pdf viewer's page-by-page pass) and cannot
+ * afford the blocking spawnSync. Same null-when-unavailable contract.
+ */
+export function createVisionOcrEngineAsync(
+  helperPath: string,
+  languages?: string[],
+): AsyncOcrEngine | null {
+  if (process.platform !== 'darwin') return null
+  if (!existsSync(helperPath)) return null
+  return createAsyncOcrEngine(helperPath, languages)
+}
+
+/** Async counterpart of createWindowsOcrEngine; same contract. */
+export function createWindowsOcrEngineAsync(
+  helperPath: string,
+  languages?: string[],
+): AsyncOcrEngine | null {
+  if (process.platform !== 'win32') return null
+  if (!existsSync(helperPath)) return null
+  return createAsyncOcrEngine(helperPath, languages)
 }

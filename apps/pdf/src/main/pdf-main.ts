@@ -30,6 +30,7 @@ import {
 } from '@genoffice/electron-utils'
 import { createI18n, getUiLang } from '@genoffice/i18n'
 import { generateImageTool, documentMediaRoots } from '@genoffice/ai-search'
+import { registerPdfAiSearchIpc } from './ai-search-ipc'
 import { PDF_CHANNELS, PDF_READ_CHUNK_BYTES } from '../shared/ipc'
 import { printJobOptions, printOutcome } from '@genoffice/electron-utils/print-job'
 import {
@@ -2392,6 +2393,8 @@ export function startPdfStandalone(): void {
   void app.whenReady().then(() => {
     installRendererProtocol({ pdf: join(__dirname, '../renderer') })
     registerPdfIpc()
+    // shell mode leaves the shared ai:* search channels to docs-main registerAiIpc
+    registerPdfAiSearchIpc()
     const win = new BrowserWindow({
       width: 1200,
       height: 850,

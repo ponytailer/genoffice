@@ -49,6 +49,18 @@ function countWords(text: string): number {
 
 const PANEL_WIDTH_KEY = 'pdf-ai-panel-width'
 
+/**
+ * Web-search switch. On by default: an assistant that cannot look anything up
+ * answers dated questions from memory. Kept per-app in localStorage rather
+ * than in the shell's app-settings because it is a per-conversation stance,
+ * not a UI preference — but it must survive a reload, so it is persisted.
+ */
+const WEB_SEARCH_KEY = 'pdf-ai-web-search'
+
+function loadWebSearchPref(): boolean {
+  return localStorage.getItem(WEB_SEARCH_KEY) !== '0'
+}
+
 interface ToolActivity {
   name: string
   summary: string
@@ -285,6 +297,16 @@ export function AiPanel({
   }, [panelWidth])
   const settingsRef = useRef<AiSettings | null>(null)
 
+  /** composer's web-search switch; the tool set is filtered live from this ref */
+  const [webSearchEnabled, setWebSearchEnabled] = useState(loadWebSearchPref)
+  const webSearchEnabledRef = useRef(webSearchEnabled)
+  webSearchEnabledRef.current = webSearchEnabled
+  const toggleWebSearch = () =>
+    setWebSearchEnabled((on) => {
+      localStorage.setItem(WEB_SEARCH_KEY, on ? '0' : '1')
+      return !on
+    })
+
   /** gsk login state for the cloud-tools gate (refreshed on mount and window focus) */
   const gskLoggedInRef = useRef(false)
   useEffect(() => {
@@ -410,6 +432,8 @@ export function AiPanel({
       bakeImage: (ref, op, signal) => apiRef.current.bakeImage(ref, op, signal),
       deleteImage: (ref) => apiRef.current.deleteImage(ref),
       searchImages: (query, max) => apiRef.current.searchImages(query, max),
+      webSearch: (query, max) => apiRef.current.webSearch(query, max),
+      webSearchAvailable: () => webSearchEnabledRef.current,
       generateImage: (op) => apiRef.current.generateImage(op),
       imageGenAvailable: () =>
         imageGenerationAvailable(settingsRef.current, gskLoggedInRef.current),
@@ -930,6 +954,16 @@ export function AiPanel({
           iconOnly
           footerStart={
             <>
+              <button
+                type="button"
+                className={`ai-websearch-btn${webSearchEnabled ? ' on' : ''}`}
+                onClick={toggleWebSearch}
+                aria-pressed={webSearchEnabled}
+                title={t(webSearchEnabled ? 'aiWebSearchOnTitle' : 'aiWebSearchOffTitle')}
+              >
+                <span className="ai-websearch-dot" aria-hidden />
+                <span className="ai-websearch-label">{t('aiWebSearch')}</span>
+              </button>
               <AiModelPicker bridge={MODEL_BRIDGE} lang={lang} />
               {sessionUsage && <AiUsageChip usage={sessionUsage} session lang={lang} />}
               <AiSkillsMenu

@@ -5,23 +5,28 @@
  * shell's pdf2docx-local.ts — packaged under Resources/ocr, repo-relative in
  * dev. Linux (or a build without the helper) resolves to no engine and the
  * viewer keeps today's behavior.
+ *
+ * This bridge uses the ASYNC engine on purpose: the main process shares its
+ * event loop with every open window's IPC, and a page takes seconds in Vision,
+ * so the sync engine froze the whole app for the length of the pass.
  */
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
-  createVisionOcrEngine,
-  createWindowsOcrEngine,
+  createVisionOcrEngineAsync,
+  createWindowsOcrEngineAsync,
 } from '../../../../packages/pdf2docx/src/ocr-vision'
-import type { OcrEngine } from '../../../../packages/pdf2docx/src/ocr'
+import type { AsyncOcrEngine, OcrRecognition } from '../../../../packages/pdf2docx/src/ocr'
 import type { PdfOcrLine } from '../shared/ipc'
 
-let ocrEngine: OcrEngine | null | undefined
+let ocrEngine: AsyncOcrEngine | null | undefined
 
-function ensureOcrEngine(): OcrEngine | null {
+function ensureOcrEngine(): AsyncOcrEngine | null {
   if (ocrEngine !== undefined) return ocrEngine
   const here = dirname(fileURLToPath(import.meta.url))
   const helper = process.platform === 'darwin' ? 'vision-ocr' : 'win-ocr.exe'
-  const create = process.platform === 'darwin' ? createVisionOcrEngine : createWindowsOcrEngine
+  const create =
+    process.platform === 'darwin' ? createVisionOcrEngineAsync : createWindowsOcrEngineAsync
   const candidates = [
     ...(process.resourcesPath ? [join(process.resourcesPath, 'ocr', helper)] : []),
     join(here, '../../../../packages/pdf2docx/ocr-helper', helper),
@@ -37,19 +42,9 @@ function ensureOcrEngine(): OcrEngine | null {
   return ocrEngine
 }
 
-/** PNG (base64) → OCR lines; null only when the platform has no engine (callers
-    stop trying), [] when recognition failed for this image (callers move on) */
-export function ocrPagePng(pngBase64: string): PdfOcrLine[] | null {
-  const engine = ensureOcrEngine()
-  if (!engine) return null
-  let png: Uint8Array
-  try {
-    png = Uint8Array.from(Buffer.from(pngBase64, 'base64'))
-  } catch {
-    return []
-  }
-  const result = engine(png, { widthPt: 0, heightPt: 0 }) // helpers ignore the page size hint
-  if (!result) return []
+/** Recognition → the IPC shape; exported for the unit tests (the IPC path
+    itself cannot be exercised without Electron). */
+export function toPdfOcrLines(result: OcrRecognition): PdfOcrLine[] {
   return result.lines.map((l) => ({
     text: l.text,
     confidence: l.confidence,
@@ -63,4 +58,20 @@ export function ocrPagePng(pngBase64: string): PdfOcrLine[] | null {
         }
       : {}),
   }))
+}
+
+/** PNG (base64) → OCR lines; null only when the platform has no engine (callers
+    stop trying), [] when recognition failed for this image (callers move on) */
+export async function ocrPagePng(pngBase64: string): Promise<PdfOcrLine[] | null> {
+  const engine = ensureOcrEngine()
+  if (!engine) return null
+  let png: Uint8Array
+  try {
+    png = Uint8Array.from(Buffer.from(pngBase64, 'base64'))
+  } catch {
+    return []
+  }
+  const result = await engine(png)
+  if (!result) return []
+  return toPdfOcrLines(result)
 }

@@ -16,6 +16,9 @@ function makeDeps(over: Partial<PdfAiDeps> = {}): PdfAiDeps {
       annotationSummary: () => '',
       metadata: () => ({}),
       outline: () => null,
+      // predicates behind the live getters: the proxy throws on anything undeclared
+      webSearchAvailable: () => true,
+      imageGenAvailable: () => true,
       ...over,
     } as Record<string, unknown>,
     {
@@ -78,6 +81,44 @@ describe('buildContext', () => {
   it('injects the annotation summary when present', () => {
     const line = 'The document has 3 note thread(s); use read_annotations to read them.'
     expect(contextOf({ annotationSummary: () => line })).toContain(line)
+  })
+})
+
+describe('web-search switch', () => {
+  const toolNames = (over: Partial<PdfAiDeps> = {}): string[] =>
+    (createPdfSkill(makeDeps(over)).tools as { name: string }[]).map((t) => t.name)
+
+  it('offers web_search while the switch is on', () => {
+    expect(toolNames()).toContain('web_search')
+    expect(toolNames({ webSearchAvailable: () => true })).toContain('web_search')
+  })
+
+  it('drops web_search and its prompt note when the switch is off', () => {
+    const over = { webSearchAvailable: () => false }
+    expect(toolNames(over)).not.toContain('web_search')
+    // no prose about a tool the model cannot call
+    expect(createPdfSkill(makeDeps(over)).systemPrompt).not.toContain('web_search')
+  })
+
+  it('keeps the prompt note while the switch is on', () => {
+    expect(createPdfSkill(makeDeps()).systemPrompt).toContain('web_search is on')
+  })
+
+  it('reads the predicate live, so flipping the switch needs no rebuild', () => {
+    let on = false
+    const skill = createPdfSkill(makeDeps({ webSearchAvailable: () => on }))
+    expect((skill.tools as { name: string }[]).map((t) => t.name)).not.toContain('web_search')
+    on = true
+    expect((skill.tools as { name: string }[]).map((t) => t.name)).toContain('web_search')
+  })
+
+  it('filters web_search and generate_image independently', () => {
+    const names = toolNames({ webSearchAvailable: () => false, imageGenAvailable: () => false })
+    expect(names).not.toContain('web_search')
+    expect(names).not.toContain('generate_image')
+    // unrelated tools survive both filters
+    expect(names).toContain('read_pages')
+    expect(names).toContain('image_search')
   })
 })
 

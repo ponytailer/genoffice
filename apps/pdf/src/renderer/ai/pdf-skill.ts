@@ -49,20 +49,30 @@ const SELECTION_CONTEXT_CHARS = 12_000
 const IMAGE_GEN_OFF_NOTE =
   '\n\nNote: generate_image is currently unavailable (no image provider: signed out of Genspark or cloud tools off, and no media API key in Settings). Do not call or promise it; use image_search for imagery.'
 
+/** Appended only while the composer's web-search switch is on; the tool itself is filtered out otherwise */
+const WEB_SEARCH_NOTE =
+  '\n\n# Web search\n- web_search is on: use it whenever the answer needs facts, figures, or news beyond this PDF, then cite the sources you used as markdown links.\n- Never present a number you did not read in the document or find through web_search. If a search comes back empty, say the web had nothing rather than filling the gap yourself.'
+
 export function createPdfSkill(deps: PdfAiDeps): AgentSkill {
+  /** live: the toggle and the provider availability are re-read before every model request */
+  const webSearchOn = () => deps.webSearchAvailable?.() !== false
   return {
     id: 'pdf',
     // live like tools: the off-note overrides the prose that still mentions generate_image
     get systemPrompt() {
-      return deps.imageGenAvailable?.() === false
-        ? SYSTEM_PROMPT + IMAGE_GEN_OFF_NOTE
-        : SYSTEM_PROMPT
+      let prompt = SYSTEM_PROMPT
+      if (deps.imageGenAvailable?.() === false) prompt += IMAGE_GEN_OFF_NOTE
+      // the note only rides along with the tool; a filtered-out tool needs no prose about it
+      if (webSearchOn()) prompt += WEB_SEARCH_NOTE
+      return prompt
     },
-    // live view: the predicate is re-read before every model request
+    // live view: the predicates are re-read before every model request
     get tools() {
-      return deps.imageGenAvailable?.() === false
-        ? AGENT_TOOLS.filter((t) => t.name !== 'generate_image')
-        : AGENT_TOOLS
+      let tools = AGENT_TOOLS
+      if (!webSearchOn()) tools = tools.filter((t) => t.name !== 'web_search')
+      if (deps.imageGenAvailable?.() === false)
+        tools = tools.filter((t) => t.name !== 'generate_image')
+      return tools
     },
     buildContext: () => {
       const parts = [

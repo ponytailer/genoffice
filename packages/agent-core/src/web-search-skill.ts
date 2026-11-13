@@ -46,7 +46,7 @@ export interface WebSearchSkillDeps {
    * it off (a restored conversation, a stale tool list) must not hit the network.
    */
   available?: () => boolean
-  /** tool-row label shown in the panel, e.g. 联网搜索“文旅政策” */
+  /** tool-row label shown in the panel, e.g. the localized "search the web for X" */
   label?: (query: string) => string
 }
 

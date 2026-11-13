@@ -17,6 +17,7 @@ import * as showActions from './show-actions'
 import * as styleActions from './style-actions'
 import { flushActiveEdit } from './file-actions'
 import { shouldRouteHistoryToDeck } from './undo-routing'
+import { ownedByComposition } from './ime'
 import { rangeSelection } from '../shared/slide-selection'
 import { nextPreset, prevPreset } from './zoom-steps'
 
@@ -89,6 +90,9 @@ export function handleGlobalKeydown(
   platform = navigator.platform,
 ): void {
   if (ctx.slideShow || ctx.presenter) return // In show/presenter view: navigation keys are handled by those views
+  // An IME is between the keystroke and the document: this key is building a composition
+  // (letters land in the IME's buffer, not in the DOM) and belongs to it — see ime.ts.
+  if (ownedByComposition(e)) return
   const mod = e.metaKey || e.ctrlKey
   const inField = inTextField()
   const { editing, selectedIds, slide } = ctx

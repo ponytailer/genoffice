@@ -18,6 +18,7 @@ import {
   type FontSizeStep,
 } from '@genoffice/pptx-ops/font-size'
 import { bulletRunText } from './bullet-presets'
+import { ownedByComposition } from './ime'
 
 interface Props {
   node: ShapeRenderNode
@@ -899,6 +900,12 @@ export function TextEditOverlay({
           }
         }}
         onKeyDown={(e) => {
+          // A live composition owns every key it sees: Escape closes the IME's candidate
+          // list, arrows walk it, Enter picks from it. Acting on them committed the text and
+          // unmounted this editor underneath a composition that was still open, leaving the
+          // IME's buffered letters with nowhere to go — "typing does nothing, then a burst
+          // of letters at once". Leaving the key alone lets the IME finish first.
+          if (ownedByComposition(e.nativeEvent)) return
           if (e.key === 'Escape' || e.key === 'F2') {
             // Esc / F2 = commit the text and return to shape-selected state (input not lost);
             // when unchanged, commit internally goes through onCancel and produces no history step
